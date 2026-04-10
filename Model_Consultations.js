@@ -1,53 +1,3 @@
-function buildCaseStaffTable (){
-  const casesSheet = readSheetAsObjects_(CONFIG.sheets.rawCases);
-  const staffSheet = readSheetAsObjects_(CONFIG.sheets.rawStaff);
-  const staffById = {};
-
-  staffSheet.forEach(s => {
-    const id = String(s.id).trim();
-    staffById[id] = s;
-  });
-
-  const output = [];
-
-  casesSheet.forEach(c => {
-    const caseId = c.id;
-    const caseName = c.name;
-    const caseStaff = c.staff;
-
-    let assignedStaffNames = [];
-    let assignedStaffIds = [];
-
-     if (caseStaff) {
-      const parsedStaff = parseJsonMaybe_(caseStaff);
-  
-    if (Array.isArray(parsedStaff)) {
-        parsedStaff.forEach(member => {
-          const staffId = String(member.id).trim();
-          const staffMatch = staffById[staffId];
-
-          const fullName = staffMatch
-            ? [staffMatch.first_name, staffMatch.last_name].filter(Boolean).join(' ')
-            : `ID ${staffId}`;
-
-          assignedStaffNames.push(fullName);
-          assignedStaffIds.push(staffId);
-        });
-      }
-    }
-
-      output.push({
-      case_id: caseId,
-      case_name: caseName,
-      assigned_staff_names: assignedStaffNames.join(', '),
-      assigned_staff_ids: assignedStaffIds.join(', '),
-      has_staff_assigned: assignedStaffNames.length > 0 ? 'Yes' : 'No'
-    });
-  });
-
-  writeRowsToSheet_('case_staff_summary', output);
-}
-
 function buildFactConsultations() {
   const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
 
@@ -86,7 +36,6 @@ function buildFactConsultations() {
     const locationObj = parseJsonMaybe_(ev.location);
     const staffObj = parseJsonMaybe_(ev.staff);
 
-    // Dedupe básico por id; si no existe id, usa combinación estable
     const eventId = firstNonEmpty_(ev.id, ev.event_id);
     const dedupeKey = eventId
       ? 'ID_' + String(eventId)
@@ -149,7 +98,6 @@ function buildFactConsultations() {
     });
   });
 
-  // Orden recomendado: fecha ascendente, luego tipo, luego case
   rows.sort(function(a, b) {
     const dateCompare = String(a.event_datetime).localeCompare(String(b.event_datetime));
     if (dateCompare !== 0) return dateCompare;
@@ -208,15 +156,4 @@ function formatFactConsultationsColumns_() {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0');
     }
   });
-}
-
-function ensureSheetExists_(sheetName) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(sheetName);
-
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-  }
-
-  return sheet;
 }

@@ -27,30 +27,74 @@ function runFullRefreshCaseMaster() {
 
 
 function syncAllRaw() {
-  syncCases();
-  syncClients();
-  syncLeads();
-  syncInvoices();
-  syncEvents();
-  syncRoles();
-  syncCalls();
-  syncTasks();
+  syncResourcesByKeys_([
+    'cases',
+    'clients',
+    'leads',
+    'invoices',
+    'events',
+    'roles',
+    'calls',
+    'tasks'
+  ]);
 }
 
 
 function syncCaseMasterInputs() {
-  syncCases();
-  syncClients();
-  syncInvoices();
-  syncEvents();
+  syncResourcesByKeys_([
+    'cases',
+    'clients',
+    'invoices',
+    'events'
+  ]);
 }
 
 function fullRefreshCaseMaster() {
-  syncCaseMasterInputs();
-  importLatestMyCaseLeadsReportFromDrive();
-  buildFactCaseMaster();
+  const lock = LockService.getScriptLock();
+
+  if (!lock.tryLock(30000)) {
+    Logger.log('Ya hay una ejecucion en curso.');
+    return;
+  }
+
+  const start = new Date();
+
+  try {
+    Logger.log('=== INICIO fullRefreshCaseMaster ===');
+
+    Logger.log('1. Sync case master inputs...');
+    syncCaseMasterInputs();
+
+    Logger.log('2. Import latest MyCase leads report...');
+    importLatestMyCaseLeadsReportFromDrive();
+
+    Logger.log('3. Build fact_case_master...');
+    buildFactCaseMaster();
+
+    Logger.log('4. updateLastRefreshTimestamp_');
+    updateLastRefreshTimestamp_();
+
+    Logger.log('=== FIN OK fullRefreshCaseMaster ===');
+    Logger.log('Duracion total: ' + ((new Date() - start) / 1000) + ' segundos');
+  } catch (error) {
+    Logger.log('ERROR en fullRefreshCaseMaster: ' + error.message);
+    Logger.log(error.stack);
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function refreshMyCaseLeadsReport(){
   importLatestMyCaseLeadsReportFromDrive()
+}
+
+function updateLastRefreshTimestamp_() {
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName('Menu');
+
+  if (!sheet) return;
+
+  sheet.getRange('A1').setValue('Ultima actualizacion: ' + new Date());
 }

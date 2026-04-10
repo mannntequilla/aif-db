@@ -11,7 +11,7 @@ function buildFactCaseMaster() {
   const firstConsultByCaseId = getFirstInitialConsultationByCaseId_(events);
   const leadMatches = buildLeadMatches_(cases, mycaseLeadsReport, clientsById);
 
-  const rows = cases.map(function (caseRow) {
+  const rows = cases.map(function(caseRow) {
     const caseId = firstNonEmpty_(caseRow.id, caseRow.case_id);
 
     const linkedClientRef = findPreferredCaseClientRef_(caseRow);
@@ -86,9 +86,11 @@ function buildFactCaseMaster() {
 
       matched_lead_name: firstNonEmpty_(leadMatch.lead_name),
       matched_lead_phone_number: firstNonEmpty_(leadMatch.phone_number),
-      lead_type: classifyLeadType_(leadMatch,firstConsult.first_initial_consultation_date,
+      lead_type: classifyLeadType_(
+        leadMatch,
+        firstConsult.first_initial_consultation_date,
         caseRow.opened_date
-        ),
+      ),
 
       lead_status: firstNonEmpty_(leadMatch.lead_status),
       lead_practice_area: firstNonEmpty_(leadMatch.practice_area),
@@ -111,7 +113,7 @@ function buildLeadMatches_(cases, mycaseLeadsReport, clientsById) {
 
   if (!mycaseLeadsReport || !mycaseLeadsReport.length) return out;
 
-  cases.forEach(function (caseRow) {
+  cases.forEach(function(caseRow) {
     const caseId = String(firstNonEmpty_(caseRow.id, caseRow.case_id) || '');
     if (!caseId) return;
 
@@ -142,7 +144,7 @@ function buildLeadMatches_(cases, mycaseLeadsReport, clientsById) {
     let bestMatch = null;
     let bestScore = 0;
 
-    mycaseLeadsReport.forEach(function (leadRow) {
+    mycaseLeadsReport.forEach(function(leadRow) {
       const leadName = normalizeText_(leadRow['Lead name']);
       const leadPhone = normalizePhone_(leadRow['Phone number']);
       const leadConversionDate = toDateOnlyMaybe_(leadRow['Conversion date']);
@@ -233,7 +235,6 @@ function formatFactCaseMasterColumns_() {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-  //Fechas
   [
     'case_opened_date',
     'case_updated_at',
@@ -247,8 +248,6 @@ function formatFactCaseMasterColumns_() {
     }
   });
 
-  //Números / dinero
-
   [
     'total_invoice_amount',
     'total_paid_so_far',
@@ -261,114 +260,4 @@ function formatFactCaseMasterColumns_() {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0.00');
     }
   });
-}
-
-function buildLeadsFunnelByDate() {
-  const rows = readSheetAsObjectsIfExists_(CONFIG.sheets.rawMyCaseLeadsReport);
-
-  if (!rows || !rows.length) {
-    writeRowsToSheet_(CONFIG.sheets.funnelLeadsByDate, []);
-    return;
-  }
-
-  const grouped = {};
-
-  rows.forEach(function(row) {
-    const funnelDate = toDateOnlyMaybe_(firstNonEmpty_(row['Date added']));
-    if (!funnelDate) return;
-
-    const rawStatus = firstNonEmpty_(row['Lead status']);
-    const status = rawStatus ? String(rawStatus).trim() : '';
-
-    const conversionDate = toDateOnlyMaybe_(firstNonEmpty_(row['Conversion date']));
-    const stage = classifyLeadFunnelStage_(status, conversionDate);
-
-    if (!grouped[funnelDate]) {
-      grouped[funnelDate] = {
-        'New Leads': 0,
-        'Potential Leads': 0,
-        'Converted': 0
-      };
-    }
-
-    // 🔥 AQUÍ ESTÁ EL CAMBIO IMPORTANTE
-
-    // Siempre cuenta como New
-    grouped[funnelDate]['New Leads'] += 1;
-
-    if (stage === 'Potential Leads') {
-      grouped[funnelDate]['Potential Leads'] += 1;
-    }
-
-    if (stage === 'Converted') {
-      grouped[funnelDate]['Potential Leads'] += 1;
-      grouped[funnelDate]['Converted'] += 1;
-    }
-
-  });
-
-  const stageOrderMap = {
-    'New Leads': 1,
-    'Potential Leads': 2,
-    'Converted': 3
-  };
-
-  const output = [];
-
-  Object.keys(grouped)
-    .sort()
-    .forEach(function(date) {
-      Object.keys(stageOrderMap).forEach(function(stage) {
-        output.push({
-          funnel_date: formatDateOnlyForSheet_(date),
-          stage: stage,
-          count: grouped[date][stage],
-          stage_order: stageOrderMap[stage]
-        });
-      });
-    });
-
-  writeRowsToSheet_(CONFIG.sheets.funnelLeadsByDate, output);
-}
-
-function classifyLeadFunnelStage_(status, conversionDate) {
-  const normalizedStatus = normalizeLeadStatus_(status);
-
-  const isConvertedStatus =
-    normalizedStatus === 'contract' ||
-    normalizedStatus === 'detainee visitation';
-
-  if (isConvertedStatus && conversionDate) {
-    return 'Converted';
-  }
-
-  const isPotentialLead =
-    normalizedStatus === 'consult scheduled' ||
-    normalizedStatus === 'hot deal' ||
-    normalizedStatus === 'first follow up' ||
-    normalizedStatus === 'second follow up';
-
-  if (isPotentialLead) {
-    return 'Potential Leads';
-  }
-
-  const isNewLead =
-    normalizedStatus === 'new lead' ||
-    normalizedStatus === 'pending payment' ||
-    normalizedStatus === 'contacted' ||
-    normalizedStatus === 'contacted 2nd follow up' || 
-    normalizedStatus === 'contacted 3rd follow up';
-
-  if (isNewLead) {
-    return 'New Leads';
-  }
-
-  return 'New Leads';
-}
-
-function normalizeLeadStatus_(status) {
-  return String(status || '')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
 }

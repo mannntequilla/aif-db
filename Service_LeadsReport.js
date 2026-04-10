@@ -18,7 +18,7 @@ function importLatestMyCaseLeadsReportFromDrive() {
   }
 
   if (!latestFile) {
-    throw new Error('No encontré ningún CSV en la carpeta.');
+    throw new Error('No encontre ningun CSV en la carpeta.');
   }
 
   const csvText = latestFile.getBlob().getDataAsString();
@@ -27,7 +27,7 @@ function importLatestMyCaseLeadsReportFromDrive() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = CONFIG.sheets.rawMyCaseLeadsReport;
   if (!sheetName) {
-    throw new Error('CONFIG.sheets.rawMycaseLeadsReport no está definido.');
+    throw new Error('CONFIG.sheets.rawMyCaseLeadsReport no esta definido.');
   }
 
   let sheet = ss.getSheetByName(sheetName);

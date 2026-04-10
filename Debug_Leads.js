@@ -1,33 +1,3 @@
-function debugInitialConsultEvents() {
-  const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
-
-  events.slice(0, 30).forEach(function(ev, i) {
-    Logger.log('--- EVENT ' + i + ' ---');
-    Logger.log('id=' + ev.id);
-    Logger.log('case_id=' + ev.case_id);
-    Logger.log('case=' + ev.case);
-        Logger.log('event_type=' + ev.event_type);
-    Logger.log('type=' + ev.type);
-    Logger.log('title=' + ev.title);
-    Logger.log('name=' + ev.name);
-    Logger.log('subject=' + ev.subject);
-    Logger.log('description=' + ev.description);
-    Logger.log('start_at=' + ev.start_at);
-    Logger.log('start_time=' + ev.start_time);
-    Logger.log('date=' + ev.date);
-  });
-}
-
-function debugRawEventsHeaders() {
-  const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
-  if (!events.length) {
-    Logger.log('No events found');
-    return;
-  }
-
-  Logger.log(JSON.stringify(Object.keys(events[0])));
-}
-
 function debugRawLeadsHeaders() {
   const leads = readSheetAsObjects_(CONFIG.sheets.rawLeads);
   if (!leads.length) {
@@ -44,7 +14,7 @@ function debugLeadClientUuidOverlap() {
 
   const leadUuids = new Set(
     leads
-      .map(r => String(firstNonEmpty_(r.uuid)).trim())
+      .map(function(r) { return String(firstNonEmpty_(r.uuid)).trim(); })
       .filter(Boolean)
   );
 
@@ -88,47 +58,11 @@ function debugHeadersRawMyCaseLeadsReport() {
   return headers;
 }
 
-function debugFirstConsultEventType() {
-  const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
-  const firstConsultByCaseId = getFirstInitialConsultationByCaseId_(events);
-
-  const keys = Object.keys(firstConsultByCaseId);
-  Logger.log('TOTAL CASES WITH CONSULT EVENTS: ' + keys.length);
-
-  if (keys.length) {
-    const sample = firstConsultByCaseId[keys[0]];
-    Logger.log(JSON.stringify(sample, null, 2));
-  }
-}
-
-function debugRawEventsHeadersAndSample() {
-  const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
-
-  Logger.log('TOTAL EVENTS: ' + events.length);
-
-  if (!events.length) return;
-
-  Logger.log('EVENT KEYS: ' + JSON.stringify(Object.keys(events[0]), null, 2));
-  Logger.log('FIRST EVENT SAMPLE: ' + JSON.stringify(events[0], null, 2));
-}
-
-function debugFirstConsultObjects() {
-  const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
-  const firstConsultByCaseId = getFirstInitialConsultationByCaseId_(events);
-
-  const keys = Object.keys(firstConsultByCaseId);
-  Logger.log('TOTAL MATCHED CASES: ' + keys.length);
-
-  keys.slice(0, 10).forEach(function(key) {
-    Logger.log(key + ' => ' + JSON.stringify(firstConsultByCaseId[key], null, 2));
-  });
-}
-
 function getAllSpreadsheetHeaders() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
 
-  const result = sheets.map(sheet => {
+  const result = sheets.map(function(sheet) {
     const lastColumn = sheet.getLastColumn();
 
     if (lastColumn === 0) {
@@ -149,6 +83,7 @@ function getAllSpreadsheetHeaders() {
   Logger.log(JSON.stringify(result, null, 2));
   return result;
 }
+
 function debugConvertedLeadClassification() {
   const rows = readSheetAsObjectsIfExists_(CONFIG.sheets.rawMyCaseLeadsReport);
 
@@ -187,7 +122,7 @@ function debugConvertedLeadClassification() {
       }
 
       output.push({
-        row_number: index + 2, // +2 assuming row 1 is headers
+        row_number: index + 2,
         lead_name: firstNonEmpty_(row['Lead name']),
         lead_id: firstNonEmpty_(row['Lead ID']) || firstNonEmpty_(row['Id']) || '',
         raw_status: rawStatus,
