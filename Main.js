@@ -48,6 +48,7 @@ function syncCaseMasterInputs() {
     'cases',
     'clients',
     'invoices',
+    'expenses',
     'events',
     'customFields'
   ]);
