@@ -22,6 +22,7 @@ const CONFIG = {
     rawStaff: 'raw_staff',
     rawCustomFields: 'raw_custom_fields',
     factCaseMaster: 'fact_case_master',
+    factCaseProfitability: 'fact_case_profitability',
     factConsultations: 'fact_consultations',
     taskReport: 'task_report',
     rawMyCaseLeadsReport: 'raw_mycase_leads_report',
