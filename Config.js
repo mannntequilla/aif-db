@@ -19,6 +19,7 @@ const CONFIG = {
     rawCalls: 'raw_calls',
     rawTasks: 'raw_tasks',
     rawStaff: 'raw_staff',
+    rawCustomFields: 'raw_custom_fields',
     factCaseMaster: 'fact_case_master',
     factConsultations: 'fact_consultations',
     taskReport: 'task_report',
@@ -36,5 +37,6 @@ const CONFIG = {
     events: '/events',
     roles: '/case_roles',
     staff: '/staff',
+    customFields: '/custom_fields',
   }
 };

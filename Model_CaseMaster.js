@@ -4,12 +4,14 @@ function buildFactCaseMaster() {
   const invoices = readSheetAsObjects_(CONFIG.sheets.rawInvoices);
   const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
   const roles = readSheetAsObjects_(CONFIG.sheets.rawRoles);
+  const customFields = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCustomFields);
   const mycaseLeadsReport = readSheetAsObjectsIfExists_(CONFIG.sheets.rawMyCaseLeadsReport);
 
   const clientsById = indexBy_(clients, 'id');
   const invoicesByCaseId = aggregateInvoicesByCaseId_(invoices);
   const firstConsultByCaseId = getFirstInitialConsultationByCaseId_(events);
   const leadMatches = buildLeadMatches_(cases, mycaseLeadsReport, clientsById);
+  const retainerCustomFieldId = getCustomFieldIdByName_(customFields, 'Retainer', 'case');
 
   const rows = cases.map(function(caseRow) {
     const caseId = firstNonEmpty_(caseRow.id, caseRow.case_id);
@@ -28,6 +30,7 @@ function buildFactCaseMaster() {
 
     const caseOpenedDate = firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date);
     const firstConsultDate = firstConsult.first_initial_consultation_date || '';
+    const retainerValue = getCaseCustomFieldValueById_(caseRow, retainerCustomFieldId);
 
     const leadType = classifyLeadType_(
       leadMatch,
@@ -56,6 +59,7 @@ function buildFactCaseMaster() {
       case_stage: firstNonEmpty_(caseRow.case_stage, caseRow.stage),
       practice_area: firstNonEmpty_(caseRow.practice_area, caseRow.practice_area_name),
       office_name: extractOfficeName_(caseRow),
+      retainer: retainerValue,
 
       client_id: firstNonEmpty_(linkedClient.id, linkedClient.client_id),
       client_full_name: firstNonEmpty_(

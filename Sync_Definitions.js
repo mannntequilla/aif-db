@@ -46,6 +46,11 @@ function getSyncDefinitions_() {
       endpoint: CONFIG.endpoints.staff,
       sheetName: CONFIG.sheets.rawStaff,
       transform: passthroughSyncRows_
+    },
+    customFields: {
+      endpoint: CONFIG.endpoints.customFields,
+      sheetName: CONFIG.sheets.rawCustomFields,
+      transform: passthroughSyncRows_
     }
   };
 }

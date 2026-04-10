@@ -171,6 +171,39 @@ function formatFactCaseMasterDateColumns_() {
     });
 }
 
+function getCustomFieldIdByName_(customFields, fieldName, parentType) {
+  if (!customFields || !customFields.length) return '';
+
+  const normalizedFieldName = normalizeText_(fieldName);
+  const normalizedParentType = normalizeText_(parentType || '');
+
+  const match = customFields.find(function(customField) {
+    const currentName = normalizeText_(customField.name);
+    const currentParentType = normalizeText_(customField.parent_type);
+
+    if (currentName !== normalizedFieldName) return false;
+    if (normalizedParentType && currentParentType !== normalizedParentType) return false;
+
+    return true;
+  });
+
+  return match ? String(firstNonEmpty_(match.id)) : '';
+}
+
+function getCaseCustomFieldValueById_(caseRow, customFieldId) {
+  if (!customFieldId) return '';
+
+  const customFieldValues = parseJsonMaybe_(caseRow.custom_field_values) || [];
+  if (!Array.isArray(customFieldValues)) return '';
+
+  const match = customFieldValues.find(function(customFieldValueRow) {
+    const customField = customFieldValueRow.custom_field || {};
+    return String(firstNonEmpty_(customField.id)) === String(customFieldId);
+  });
+
+  return match ? firstNonEmpty_(match.value) : '';
+}
+
 function classifyLeadType_(leadMatch, consultDateRaw, caseOpenedRaw) {
   const consultDate = toDateOnlyMaybe_(consultDateRaw);
   const caseOpened = toDateOnlyMaybe_(caseOpenedRaw);

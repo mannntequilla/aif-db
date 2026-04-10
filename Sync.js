@@ -33,3 +33,7 @@ function syncTasks() {
 function syncStaff() {
   return syncResourceByKey_('staff');
 }
+
+function syncCustomFields() {
+  return syncResourceByKey_('customFields');
+}

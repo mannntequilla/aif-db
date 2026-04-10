@@ -35,7 +35,9 @@ function syncAllRaw() {
     'events',
     'roles',
     'calls',
-    'tasks'
+    'tasks',
+    'staff',
+    'customFields'
   ]);
 }
 
@@ -45,7 +47,8 @@ function syncCaseMasterInputs() {
     'cases',
     'clients',
     'invoices',
-    'events'
+    'events',
+    'customFields'
   ]);
 }
 
