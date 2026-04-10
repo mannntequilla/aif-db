@@ -145,3 +145,33 @@ function showAccessToken() {
   const token = getAccessToken_();
   Logger.log(token);
 }
+
+function profileExpensesRaw_() {
+  const expenses = readSheetAsObjectsIfExists_(CONFIG.sheets.rawExpenses);
+
+  if (!expenses.length) {
+    Logger.log('No expenses found in raw_expenses');
+    writeRowsToSheet_('debug_expenses_profile', []);
+    return;
+  }
+
+  Logger.log('Total expenses: ' + expenses.length);
+  Logger.log('Expense headers: ' + JSON.stringify(Object.keys(expenses[0])));
+  Logger.log('First expense sample: ' + JSON.stringify(expenses[0], null, 2));
+
+  const output = expenses.slice(0, 200).map(function(expense) {
+    return {
+      expense_id: firstNonEmpty_(expense.id),
+      case_id: firstNonEmpty_(expense.case_id),
+      amount: firstNonEmpty_(expense.amount, expense.value, expense.total_amount),
+      description: firstNonEmpty_(expense.description, expense.name, expense.title),
+      expense_type: firstNonEmpty_(expense.expense_type, expense.type, expense.category),
+      created_at: firstNonEmpty_(expense.created_at),
+      updated_at: firstNonEmpty_(expense.updated_at),
+      raw_case: asJson_(expense.case),
+      raw_client: asJson_(expense.client)
+    };
+  });
+
+  writeRowsToSheet_('debug_expenses_profile', output);
+}

@@ -14,6 +14,10 @@ function syncInvoices() {
   return syncResourceByKey_('invoices');
 }
 
+function syncExpenses() {
+  return syncResourceByKey_('expenses');
+}
+
 function syncLeads() {
   return syncResourceByKey_('leads');
 }

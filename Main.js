@@ -32,6 +32,7 @@ function syncAllRaw() {
     'clients',
     'leads',
     'invoices',
+    'expenses',
     'events',
     'roles',
     'calls',
@@ -50,6 +51,11 @@ function syncCaseMasterInputs() {
     'events',
     'customFields'
   ]);
+}
+
+function exploreExpensesRaw() {
+  syncExpenses();
+  profileExpensesRaw_();
 }
 
 function fullRefreshCaseMaster() {

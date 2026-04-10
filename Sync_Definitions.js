@@ -20,6 +20,11 @@ function getSyncDefinitions_() {
       sheetName: CONFIG.sheets.rawInvoices,
       transform: passthroughSyncRows_
     },
+    expenses: {
+      endpoint: CONFIG.endpoints.expenses,
+      sheetName: CONFIG.sheets.rawExpenses,
+      transform: passthroughSyncRows_
+    },
     leads: {
       endpoint: CONFIG.endpoints.leads,
       sheetName: CONFIG.sheets.rawLeads,
