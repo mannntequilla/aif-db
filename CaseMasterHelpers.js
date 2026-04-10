@@ -204,6 +204,114 @@ function getCaseCustomFieldValueById_(caseRow, customFieldId) {
   return match ? firstNonEmpty_(match.value) : '';
 }
 
+function extractExpenseSource_(expenseRow) {
+  return firstNonEmpty_(
+    expenseRow.activity_name,
+    expenseRow.source,
+    expenseRow.expense_type,
+    expenseRow.category,
+    expenseRow.description
+  );
+}
+
+function extractExpenseAmount_(expenseRow) {
+  return toNumber_(
+    firstNonEmpty_(
+      expenseRow.amount,
+      expenseRow.total_amount,
+      expenseRow.value,
+      expenseRow.expense_amount
+    )
+  );
+}
+
+function aggregateExpensesByReferralSource_(expenses) {
+  const out = {};
+
+  expenses.forEach(function(expenseRow) {
+    const source = normalizeText_(extractExpenseSource_(expenseRow));
+    if (!source) return;
+
+    if (!out[source]) {
+      out[source] = {
+        referral_source_expense_amount: 0
+      };
+    }
+
+    out[source].referral_source_expense_amount += extractExpenseAmount_(expenseRow);
+  });
+
+  return out;
+}
+
+function aggregateRevenueByReferralSource_(rows) {
+  const out = {};
+
+  rows.forEach(function(row) {
+    const source = normalizeText_(row.lead_referral_source);
+    if (!source) return;
+
+    if (!out[source]) {
+      out[source] = {
+        referral_source_case_count: 0,
+        referral_source_total_invoice_amount: 0,
+        referral_source_total_paid_amount: 0,
+        referral_source_total_balance: 0
+      };
+    }
+
+    out[source].referral_source_case_count += 1;
+    out[source].referral_source_total_invoice_amount += toNumber_(row.total_invoice_amount);
+    out[source].referral_source_total_paid_amount += toNumber_(row.total_paid_so_far);
+    out[source].referral_source_total_balance += toNumber_(row.total_balance);
+  });
+
+  return out;
+}
+
+function buildReferralSourceFinancials_(rows, expenses) {
+  const revenueBySource = aggregateRevenueByReferralSource_(rows);
+  const expensesBySource = aggregateExpensesByReferralSource_(expenses);
+  const out = {};
+  const sourceKeys = {};
+
+  Object.keys(revenueBySource).forEach(function(key) {
+    sourceKeys[key] = true;
+  });
+
+  Object.keys(expensesBySource).forEach(function(key) {
+    sourceKeys[key] = true;
+  });
+
+  Object.keys(sourceKeys).forEach(function(sourceKey) {
+    const revenue = revenueBySource[sourceKey] || {
+      referral_source_case_count: 0,
+      referral_source_total_invoice_amount: 0,
+      referral_source_total_paid_amount: 0,
+      referral_source_total_balance: 0
+    };
+    const expense = expensesBySource[sourceKey] || {
+      referral_source_expense_amount: 0
+    };
+    const profit = revenue.referral_source_total_paid_amount - expense.referral_source_expense_amount;
+    const roi = expense.referral_source_expense_amount
+      ? profit / expense.referral_source_expense_amount
+      : '';
+
+    out[sourceKey] = {
+      referral_source_case_count: revenue.referral_source_case_count,
+      referral_source_total_invoice_amount: revenue.referral_source_total_invoice_amount,
+      referral_source_total_paid_amount: revenue.referral_source_total_paid_amount,
+      referral_source_total_balance: revenue.referral_source_total_balance,
+      referral_source_expense_amount: expense.referral_source_expense_amount,
+      referral_source_profit: profit,
+      referral_source_roi: roi
+    };
+  });
+
+  return out;
+}
+
 function classifyLeadType_(leadMatch, consultDateRaw, caseOpenedRaw) {
   const consultDate = toDateOnlyMaybe_(consultDateRaw);
   const caseOpened = toDateOnlyMaybe_(caseOpenedRaw);

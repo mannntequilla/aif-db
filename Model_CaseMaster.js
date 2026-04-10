@@ -2,6 +2,7 @@ function buildFactCaseMaster() {
   const cases = readSheetAsObjects_(CONFIG.sheets.rawCases);
   const clients = readSheetAsObjects_(CONFIG.sheets.rawClients);
   const invoices = readSheetAsObjects_(CONFIG.sheets.rawInvoices);
+  const expenses = readSheetAsObjectsIfExists_(CONFIG.sheets.rawExpenses);
   const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
   const roles = readSheetAsObjects_(CONFIG.sheets.rawRoles);
   const customFields = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCustomFields);
@@ -13,7 +14,7 @@ function buildFactCaseMaster() {
   const leadMatches = buildLeadMatches_(cases, mycaseLeadsReport, clientsById);
   const retainerCustomFieldId = getCustomFieldIdByName_(customFields, 'Retainer', 'case');
 
-  const rows = cases.map(function(caseRow) {
+  const baseRows = cases.map(function(caseRow) {
     const caseId = firstNonEmpty_(caseRow.id, caseRow.case_id);
 
     const linkedClientRef = findPreferredCaseClientRef_(caseRow);
@@ -106,6 +107,23 @@ function buildFactCaseMaster() {
       lead_match_method: firstNonEmpty_(leadMatch.match_method),
       lead_match_score: firstNonEmpty_(leadMatch.match_score)
     };
+  });
+
+  const referralSourceFinancialsByKey = buildReferralSourceFinancials_(baseRows, expenses);
+
+  const rows = baseRows.map(function(row) {
+    const referralSourceKey = normalizeText_(row.lead_referral_source);
+    const referralSourceFinancials = referralSourceFinancialsByKey[referralSourceKey] || {
+      referral_source_case_count: 0,
+      referral_source_total_invoice_amount: 0,
+      referral_source_total_paid_amount: 0,
+      referral_source_total_balance: 0,
+      referral_source_expense_amount: 0,
+      referral_source_profit: 0,
+      referral_source_roi: ''
+    };
+
+    return Object.assign({}, row, referralSourceFinancials);
   });
 
   writeRowsToSheet_(CONFIG.sheets.factCaseMaster, rows);
@@ -256,6 +274,12 @@ function formatFactCaseMasterColumns_() {
     'total_invoice_amount',
     'total_paid_so_far',
     'total_balance',
+    'referral_source_total_invoice_amount',
+    'referral_source_total_paid_amount',
+    'referral_source_total_balance',
+    'referral_source_expense_amount',
+    'referral_source_profit',
+    'referral_source_roi',
     'lead_value',
     'lead_match_score'
   ].forEach(function(name) {
