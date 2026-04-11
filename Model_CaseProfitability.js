@@ -1,20 +1,61 @@
-function getProfitabilityExpenseActivityNames_() {
+function getProfitabilityGroupDefinitions_() {
   return [
-    'El abogado',
-    'Facebook Ads',
-    'Belgrano',
-    'Spanish Smile'
+    {
+      profit_group: 'El Abogado.com',
+      referral_sources: ['El Abogado.com'],
+      expense_activity_names: ['El abogado']
+    },
+    {
+      profit_group: 'Spanish Smile',
+      referral_sources: ['Spanish Smile'],
+      expense_activity_names: ['Spanish Smile', 'Facebook Ads']
+    },
+    {
+      profit_group: 'Belgrano',
+      referral_sources: [],
+      expense_activity_names: ['Belgrano']
+    },
+    {
+      profit_group: 'Google Ads',
+      referral_sources: [],
+      expense_activity_names: ['Google Ads']
+    }
   ];
 }
 
-function buildAllowedExpenseActivityLookup_() {
+function buildProfitabilityReferralSourceLookup_() {
   const out = {};
 
-  getProfitabilityExpenseActivityNames_().forEach(function(activityName) {
-    out[normalizeText_(activityName)] = activityName;
+  getProfitabilityGroupDefinitions_().forEach(function(definition) {
+    definition.referral_sources.forEach(function(referralSource) {
+      out[normalizeText_(referralSource)] = definition.profit_group;
+    });
   });
 
   return out;
+}
+
+function buildProfitabilityExpenseActivityLookup_() {
+  const out = {};
+
+  getProfitabilityGroupDefinitions_().forEach(function(definition) {
+    definition.expense_activity_names.forEach(function(activityName) {
+      out[normalizeText_(activityName)] = definition.profit_group;
+    });
+  });
+
+  return out;
+}
+
+function formatProfitabilityMetricMonth_(value) {
+  const dateValue = toDateOnlyMaybe_(value);
+  if (!dateValue) return '';
+
+  return Utilities.formatDate(
+    dateValue,
+    Session.getScriptTimeZone(),
+    'yyyy-MM'
+  );
 }
 
 function extractProfitabilityExpenseAmount_(expenseRow) {
@@ -28,89 +69,109 @@ function extractProfitabilityExpenseAmount_(expenseRow) {
   );
 }
 
-function extractProfitabilityActivityName_(value) {
-  return String(value || '').trim();
-}
-
-function formatCaseCreationMonth_(value) {
-  const dateValue = toDateOnlyMaybe_(value);
-  if (!dateValue) return '';
-
-  return Utilities.formatDate(
-    dateValue,
-    Session.getScriptTimeZone(),
-    'yyyy-MM'
+function extractProfitabilityExpenseDate_(expenseRow) {
+  return firstNonEmpty_(
+    expenseRow.expense_date,
+    expenseRow.date,
+    expenseRow.incurred_on,
+    expenseRow.created_at
   );
 }
 
-function aggregateAllowedExpensesByActivityName_(expenses) {
-  const out = {};
-  const allowedActivities = buildAllowedExpenseActivityLookup_();
+function initializeProfitabilityGroupRow_(profitGroup, metricDate, metricMonth) {
+  return {
+    profit_group: profitGroup,
+    metric_date: metricDate,
+    metric_month: metricMonth,
+    retainer_amount: 0,
+    expense_amount: 0,
+    net_profit: 0,
+    roi: '',
+    roas: '',
+    case_count: 0
+  };
+}
 
-  expenses.forEach(function(expenseRow) {
-    const activityKey = normalizeText_(firstNonEmpty_(expenseRow.activity_name));
+function aggregateProfitabilityRevenue_(caseMasterRows) {
+  const grouped = {};
+  const referralSourceLookup = buildProfitabilityReferralSourceLookup_();
 
-    if (!activityKey || !allowedActivities[activityKey]) return;
+  caseMasterRows.forEach(function(caseRow) {
+    const referralSourceKey = normalizeText_(caseRow.lead_referral_source);
+    const profitGroup = referralSourceLookup[referralSourceKey];
+    const metricDate = formatDateOnlyForSheet_(firstNonEmpty_(caseRow.case_opened_date));
+    const metricMonth = formatProfitabilityMetricMonth_(metricDate);
 
-    if (!out[activityKey]) {
-      out[activityKey] = {
-        activity_name: allowedActivities[activityKey],
-        expense_amount: 0
-      };
+    if (!profitGroup || !metricDate) return;
+
+    const groupKey = [profitGroup, metricDate, metricMonth].join('|');
+
+    if (!grouped[groupKey]) {
+      grouped[groupKey] = initializeProfitabilityGroupRow_(profitGroup, metricDate, metricMonth);
     }
 
-    out[activityKey].expense_amount += extractProfitabilityExpenseAmount_(expenseRow);
+    grouped[groupKey].retainer_amount += toNumber_(caseRow.retainer);
+    grouped[groupKey].case_count += 1;
   });
 
-  return out;
+  return grouped;
+}
+
+function aggregateProfitabilityExpenses_(expenses) {
+  const grouped = {};
+  const expenseActivityLookup = buildProfitabilityExpenseActivityLookup_();
+
+  expenses.forEach(function(expenseRow) {
+    const activityNameKey = normalizeText_(firstNonEmpty_(expenseRow.activity_name));
+    const profitGroup = expenseActivityLookup[activityNameKey];
+    const metricDate = formatDateOnlyForSheet_(extractProfitabilityExpenseDate_(expenseRow));
+    const metricMonth = formatProfitabilityMetricMonth_(metricDate);
+
+    if (!profitGroup || !metricDate) return;
+
+    const groupKey = [profitGroup, metricDate, metricMonth].join('|');
+
+    if (!grouped[groupKey]) {
+      grouped[groupKey] = initializeProfitabilityGroupRow_(profitGroup, metricDate, metricMonth);
+    }
+
+    grouped[groupKey].expense_amount += extractProfitabilityExpenseAmount_(expenseRow);
+  });
+
+  return grouped;
+}
+
+function mergeProfitabilityGroups_(revenueGroups, expenseGroups) {
+  const merged = {};
+
+  Object.keys(revenueGroups).forEach(function(groupKey) {
+    merged[groupKey] = Object.assign({}, revenueGroups[groupKey]);
+  });
+
+  Object.keys(expenseGroups).forEach(function(groupKey) {
+    if (!merged[groupKey]) {
+      merged[groupKey] = Object.assign({}, expenseGroups[groupKey]);
+      return;
+    }
+
+    merged[groupKey].expense_amount += expenseGroups[groupKey].expense_amount;
+  });
+
+  return merged;
 }
 
 function buildFactCaseProfitability() {
   const caseMasterRows = readSheetAsObjectsIfExists_(CONFIG.sheets.factCaseMaster);
   const expenses = readSheetAsObjectsIfExists_(CONFIG.sheets.rawExpenses);
-  const expensesByActivityName = aggregateAllowedExpensesByActivityName_(expenses);
 
-  if (!caseMasterRows.length) {
-    writeRowsToSheet_(CONFIG.sheets.factCaseProfitability, []);
-    return;
-  }
-
-  const grouped = {};
-
-  caseMasterRows.forEach(function(caseRow) {
-    const activityName = extractProfitabilityActivityName_(caseRow.lead_referral_source);
-    const activityKey = normalizeText_(activityName);
-    const caseCreationDate = firstNonEmpty_(caseRow.case_opened_date);
-    const caseCreationMonth = formatCaseCreationMonth_(caseCreationDate);
-
-    if (!activityKey || !expensesByActivityName[activityKey]) return;
-
-    const groupKey = [
-      activityKey,
-      formatDateOnlyForSheet_(caseCreationDate),
-      caseCreationMonth
-    ].join('|');
-
-    if (!grouped[groupKey]) {
-      grouped[groupKey] = {
-        activity_name: expensesByActivityName[activityKey].activity_name,
-        case_creation_date: formatDateOnlyForSheet_(caseCreationDate),
-        case_creation_month: caseCreationMonth,
-        case_count: 0,
-        retainer_amount: 0,
-        expense_amount: 0
-      };
-    }
-
-    grouped[groupKey].case_count += 1;
-    grouped[groupKey].retainer_amount += toNumber_(caseRow.retainer);
-  });
+  const revenueGroups = aggregateProfitabilityRevenue_(caseMasterRows);
+  const expenseGroups = aggregateProfitabilityExpenses_(expenses);
+  const grouped = mergeProfitabilityGroups_(revenueGroups, expenseGroups);
 
   const rows = Object.keys(grouped)
     .sort()
     .map(function(groupKey) {
       const row = grouped[groupKey];
-      row.expense_amount = expensesByActivityName[normalizeText_(row.activity_name)].expense_amount;
       row.net_profit = row.retainer_amount - row.expense_amount;
       row.roi = row.expense_amount ? row.net_profit / row.expense_amount : '';
       row.roas = row.expense_amount ? row.retainer_amount / row.expense_amount : '';
@@ -132,12 +193,12 @@ function formatFactCaseProfitabilityColumns_() {
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
   [
-    'case_count',
     'retainer_amount',
     'expense_amount',
     'net_profit',
     'roi',
-    'roas'
+    'roas',
+    'case_count'
   ].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
