@@ -86,10 +86,54 @@ function aggregateRetainersByReferralSourceAndMonth_(caseMasterRows) {
   return out;
 }
 
+function normalizeConsultationEventType_(value) {
+  return normalizeText_(String(value || '').replace(/[_-]+/g, ' '));
+}
+
+function getConsultationFeeByEventType_(eventType) {
+  const normalizedEventType = normalizeConsultationEventType_(eventType);
+
+  if (normalizedEventType === normalizeConsultationEventType_('Initial Consultation')) {
+    return 100;
+  }
+
+  if (normalizedEventType === normalizeConsultationEventType_('Detainee Visitation')) {
+    return 1500;
+  }
+
+  return 0;
+}
+
+function aggregateConsultationFeesByReferralSourceAndMonth_(caseMasterRows) {
+  const out = {};
+
+  caseMasterRows.forEach(function(caseRow) {
+    const referralSource = String(firstNonEmpty_(caseRow.lead_referral_source)).trim();
+    const referralSourceKey = normalizeText_(referralSource);
+    const metricMonth = formatCaseProfitabilityEntryMonth_(firstNonEmpty_(caseRow.case_opened_date));
+    const consultationFee = getConsultationFeeByEventType_(
+      firstNonEmpty_(caseRow.first_initial_consultation_event_type)
+    );
+
+    if (!referralSourceKey || !metricMonth || !consultationFee) return;
+
+    const groupKey = [referralSourceKey, metricMonth].join('|');
+
+    if (!out[groupKey]) {
+      out[groupKey] = 0;
+    }
+
+    out[groupKey] += consultationFee;
+  });
+
+  return out;
+}
+
 function buildFactCaseProfitability() {
   const expenses = readSheetAsObjectsIfExists_(CONFIG.sheets.rawExpenses);
   const caseMasterRows = readSheetAsObjectsIfExists_(CONFIG.sheets.factCaseMaster);
   const retainerByReferralSourceAndMonth = aggregateRetainersByReferralSourceAndMonth_(caseMasterRows);
+  const consultationFeesByReferralSourceAndMonth = aggregateConsultationFeesByReferralSourceAndMonth_(caseMasterRows);
 
   if (!expenses.length) {
     writeRowsToSheet_(CONFIG.sheets.factCaseProfitability, []);
@@ -131,6 +175,9 @@ function buildFactCaseProfitability() {
       row.revenue_associated = referralSourceKey
         ? toNumber_(retainerByReferralSourceAndMonth[revenueKey])
         : 0;
+      row.consultation_fees = referralSourceKey
+        ? toNumber_(consultationFeesByReferralSourceAndMonth[revenueKey])
+        : 0;
 
       return row;
     });
@@ -149,7 +196,7 @@ function formatFactCaseProfitabilityColumns_() {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-  ['expense_count', 'expense_amount', 'revenue_associated'].forEach(function(name) {
+  ['expense_count', 'expense_amount', 'revenue_associated', 'consultation_fees'].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0.00');
