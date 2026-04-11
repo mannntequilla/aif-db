@@ -42,26 +42,45 @@ function isAllowedCaseProfitabilityActivityName_(activityName) {
   });
 }
 
-function getLinkedReferralSourceByActivityName_(activityName) {
+function getLinkedReferralSourcesByActivityName_(activityName) {
   const normalizedActivityName = normalizeText_(activityName);
 
   if (normalizedActivityName === normalizeText_('Belgrano')) {
-    return 'Google Ads';
+    return ['Google Ads', 'Website'];
   }
 
   if (normalizedActivityName === normalizeText_('Spanish Smile')) {
-    return 'Spanish Smile';
+    return ['Spanish Smile'];
   }
 
   if (normalizedActivityName === normalizeText_('El abogado')) {
-    return 'El Abogado.com';
+    return ['El Abogado.com'];
   }
 
   if (normalizedActivityName === normalizeText_('Facebook Ads')) {
-    return 'Spanish Smile';
+    return ['Spanish Smile'];
   }
 
-  return '';
+  return [];
+}
+
+function formatLinkedReferralSources_(referralSources) {
+  return referralSources.join(', ');
+}
+
+function sumRetainersForReferralSourcesAndMonth_(retainersByReferralSourceAndMonth, referralSources, entryMonth) {
+  return referralSources.reduce(function(total, referralSource) {
+    const revenueKey = [normalizeText_(referralSource), entryMonth].join('|');
+    return total + toNumber_(retainersByReferralSourceAndMonth[revenueKey]);
+  }, 0);
+}
+
+function sumConsultationFeesForReferralSourcesAndMonth_(consultationFeesByReferralSourceAndMonth, referralSources, entryMonth) {
+  return referralSources.reduce(function(total, referralSource) {
+    const consultationKey = [normalizeText_(referralSource), entryMonth].join('|');
+    const consultationData = consultationFeesByReferralSourceAndMonth[consultationKey];
+    return total + toNumber_(consultationData && consultationData.consultation_fee_amount);
+  }, 0);
 }
 
 function aggregateRetainersByReferralSourceAndMonth_(caseMasterRows) {
@@ -135,13 +154,16 @@ function buildFactCaseProfitability() {
     const groupKey = [normalizeText_(activityName), entryDate].join('|');
 
     if (!grouped[groupKey]) {
+      const linkedReferralSources = getLinkedReferralSourcesByActivityName_(activityName);
+
       grouped[groupKey] = {
         activity_name: activityName,
-        referral_source_linked: getLinkedReferralSourceByActivityName_(activityName),
+        referral_source_linked: formatLinkedReferralSources_(linkedReferralSources),
         entry_date: entryDate,
         entry_month: entryMonth,
         expense_count: 0,
-        expense_amount: 0
+        expense_amount: 0,
+        linked_referral_sources_raw: linkedReferralSources
       };
     }
 
@@ -153,15 +175,24 @@ function buildFactCaseProfitability() {
     .sort()
     .map(function(groupKey) {
       const row = grouped[groupKey];
-      const referralSourceKey = normalizeText_(row.referral_source_linked);
-      const revenueKey = [referralSourceKey, row.entry_month].join('|');
+      const linkedReferralSources = row.linked_referral_sources_raw || [];
 
-      row.revenue_associated = referralSourceKey
-        ? toNumber_(retainerByReferralSourceAndMonth[revenueKey])
+      row.revenue_associated = linkedReferralSources.length
+        ? sumRetainersForReferralSourcesAndMonth_(
+            retainerByReferralSourceAndMonth,
+            linkedReferralSources,
+            row.entry_month
+          )
         : 0;
-      row.consultation_fee = referralSourceKey && consultationFeesByReferralSourceAndMonth[revenueKey]
-        ? toNumber_(consultationFeesByReferralSourceAndMonth[revenueKey].consultation_fee_amount)
+      row.consultation_fee = linkedReferralSources.length
+        ? sumConsultationFeesForReferralSourcesAndMonth_(
+            consultationFeesByReferralSourceAndMonth,
+            linkedReferralSources,
+            row.entry_month
+          )
         : 0;
+
+      delete row.linked_referral_sources_raw;
 
       return row;
     });
