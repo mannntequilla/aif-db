@@ -7,6 +7,16 @@ function getProfitabilityExpenseActivityNames_() {
   ];
 }
 
+function buildAllowedExpenseActivityLookup_() {
+  const out = {};
+
+  getProfitabilityExpenseActivityNames_().forEach(function(activityName) {
+    out[normalizeText_(activityName)] = activityName;
+  });
+
+  return out;
+}
+
 function extractProfitabilityExpenseAmount_(expenseRow) {
   return toNumber_(
     firstNonEmpty_(
@@ -18,44 +28,38 @@ function extractProfitabilityExpenseAmount_(expenseRow) {
   );
 }
 
-function extractProfitabilityExpenseCaseId_(expenseRow) {
-  const caseObj = parseJsonMaybe_(expenseRow.case);
+function extractProfitabilityActivityName_(value) {
+  return String(value || '').trim();
+}
 
-  return firstNonEmpty_(
-    expenseRow.case_id,
-    caseObj && caseObj.id
+function formatCaseCreationMonth_(value) {
+  const dateValue = toDateOnlyMaybe_(value);
+  if (!dateValue) return '';
+
+  return Utilities.formatDate(
+    dateValue,
+    Session.getScriptTimeZone(),
+    'yyyy-MM'
   );
 }
 
-function buildAllowedExpenseActivityLookup_() {
-  const out = {};
-
-  getProfitabilityExpenseActivityNames_().forEach(function(activityName) {
-    out[normalizeText_(activityName)] = activityName;
-  });
-
-  return out;
-}
-
-function aggregateAllowedExpensesByCaseId_(expenses) {
+function aggregateAllowedExpensesByActivityName_(expenses) {
   const out = {};
   const allowedActivities = buildAllowedExpenseActivityLookup_();
 
   expenses.forEach(function(expenseRow) {
-    const caseId = String(extractProfitabilityExpenseCaseId_(expenseRow) || '');
-    const activityName = normalizeText_(firstNonEmpty_(expenseRow.activity_name));
+    const activityKey = normalizeText_(firstNonEmpty_(expenseRow.activity_name));
 
-    if (!caseId || !activityName || !allowedActivities[activityName]) return;
+    if (!activityKey || !allowedActivities[activityKey]) return;
 
-    if (!out[caseId]) {
-      out[caseId] = {
-        filtered_expense_amount: 0,
-        filtered_expense_activity_names: {}
+    if (!out[activityKey]) {
+      out[activityKey] = {
+        activity_name: allowedActivities[activityKey],
+        expense_amount: 0
       };
     }
 
-    out[caseId].filtered_expense_amount += extractProfitabilityExpenseAmount_(expenseRow);
-    out[caseId].filtered_expense_activity_names[allowedActivities[activityName]] = true;
+    out[activityKey].expense_amount += extractProfitabilityExpenseAmount_(expenseRow);
   });
 
   return out;
@@ -64,40 +68,54 @@ function aggregateAllowedExpensesByCaseId_(expenses) {
 function buildFactCaseProfitability() {
   const caseMasterRows = readSheetAsObjectsIfExists_(CONFIG.sheets.factCaseMaster);
   const expenses = readSheetAsObjectsIfExists_(CONFIG.sheets.rawExpenses);
-  const expensesByCaseId = aggregateAllowedExpensesByCaseId_(expenses);
+  const expensesByActivityName = aggregateAllowedExpensesByActivityName_(expenses);
 
   if (!caseMasterRows.length) {
     writeRowsToSheet_(CONFIG.sheets.factCaseProfitability, []);
     return;
   }
 
-  const rows = caseMasterRows.map(function(caseRow) {
-    const caseId = String(firstNonEmpty_(caseRow.case_id) || '');
-    const expenseSummary = expensesByCaseId[caseId] || {
-      filtered_expense_amount: 0,
-      filtered_expense_activity_names: {}
-    };
-    const retainerAmount = toNumber_(caseRow.retainer);
-    const expenseAmount = toNumber_(expenseSummary.filtered_expense_amount);
-    const netProfit = retainerAmount - expenseAmount;
-    const roi = expenseAmount ? netProfit / expenseAmount : '';
-    const roas = expenseAmount ? retainerAmount / expenseAmount : '';
+  const grouped = {};
 
-    return {
-      case_id: caseId,
-      case_name: firstNonEmpty_(caseRow.case_name),
-      client_full_name: firstNonEmpty_(caseRow.client_full_name),
-      case_status: firstNonEmpty_(caseRow.case_status),
-      case_stage: firstNonEmpty_(caseRow.case_stage),
-      lead_referral_source: firstNonEmpty_(caseRow.lead_referral_source),
-      retainer_amount: retainerAmount,
-      filtered_expense_amount: expenseAmount,
-      filtered_expense_activity_names: Object.keys(expenseSummary.filtered_expense_activity_names).join(', '),
-      net_profit: netProfit,
-      roi: roi,
-      roas: roas
-    };
+  caseMasterRows.forEach(function(caseRow) {
+    const activityName = extractProfitabilityActivityName_(caseRow.lead_referral_source);
+    const activityKey = normalizeText_(activityName);
+    const caseCreationDate = firstNonEmpty_(caseRow.case_opened_date);
+    const caseCreationMonth = formatCaseCreationMonth_(caseCreationDate);
+
+    if (!activityKey || !expensesByActivityName[activityKey]) return;
+
+    const groupKey = [
+      activityKey,
+      formatDateOnlyForSheet_(caseCreationDate),
+      caseCreationMonth
+    ].join('|');
+
+    if (!grouped[groupKey]) {
+      grouped[groupKey] = {
+        activity_name: expensesByActivityName[activityKey].activity_name,
+        case_creation_date: formatDateOnlyForSheet_(caseCreationDate),
+        case_creation_month: caseCreationMonth,
+        case_count: 0,
+        retainer_amount: 0,
+        expense_amount: 0
+      };
+    }
+
+    grouped[groupKey].case_count += 1;
+    grouped[groupKey].retainer_amount += toNumber_(caseRow.retainer);
   });
+
+  const rows = Object.keys(grouped)
+    .sort()
+    .map(function(groupKey) {
+      const row = grouped[groupKey];
+      row.expense_amount = expensesByActivityName[normalizeText_(row.activity_name)].expense_amount;
+      row.net_profit = row.retainer_amount - row.expense_amount;
+      row.roi = row.expense_amount ? row.net_profit / row.expense_amount : '';
+      row.roas = row.expense_amount ? row.retainer_amount / row.expense_amount : '';
+      return row;
+    });
 
   writeRowsToSheet_(CONFIG.sheets.factCaseProfitability, rows);
   formatFactCaseProfitabilityColumns_();
@@ -114,8 +132,9 @@ function formatFactCaseProfitabilityColumns_() {
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
   [
+    'case_count',
     'retainer_amount',
-    'filtered_expense_amount',
+    'expense_amount',
     'net_profit',
     'roi',
     'roas'
