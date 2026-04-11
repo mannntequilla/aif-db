@@ -86,24 +86,6 @@ function aggregateRetainersByReferralSourceAndMonth_(caseMasterRows) {
   return out;
 }
 
-function normalizeConsultationEventType_(value) {
-  return normalizeText_(String(value || '').replace(/[_-]+/g, ' '));
-}
-
-function getConsultationFeeByEventType_(eventType) {
-  const normalizedEventType = normalizeConsultationEventType_(eventType);
-
-  if (normalizedEventType === normalizeConsultationEventType_('Initial Consultation')) {
-    return 100;
-  }
-
-  if (normalizedEventType === normalizeConsultationEventType_('Detainee Visitation')) {
-    return 1500;
-  }
-
-  return 0;
-}
-
 function aggregateConsultationFeesByReferralSourceAndMonth_(caseMasterRows) {
   const out = {};
 
@@ -111,19 +93,21 @@ function aggregateConsultationFeesByReferralSourceAndMonth_(caseMasterRows) {
     const referralSource = String(firstNonEmpty_(caseRow.lead_referral_source)).trim();
     const referralSourceKey = normalizeText_(referralSource);
     const metricMonth = formatCaseProfitabilityEntryMonth_(firstNonEmpty_(caseRow.case_opened_date));
-    const consultationFee = getConsultationFeeByEventType_(
-      firstNonEmpty_(caseRow.first_initial_consultation_event_type)
-    );
+    const consultationFee = toNumber_(caseRow.consultation_fee);
 
     if (!referralSourceKey || !metricMonth || !consultationFee) return;
 
     const groupKey = [referralSourceKey, metricMonth].join('|');
 
     if (!out[groupKey]) {
-      out[groupKey] = 0;
+      out[groupKey] = {
+        consultation_fee_amount: 0,
+        consultation_fee_count: 0
+      };
     }
 
-    out[groupKey] += consultationFee;
+    out[groupKey].consultation_fee_amount += consultationFee;
+    out[groupKey].consultation_fee_count += 1;
   });
 
   return out;
@@ -175,14 +159,34 @@ function buildFactCaseProfitability() {
       row.revenue_associated = referralSourceKey
         ? toNumber_(retainerByReferralSourceAndMonth[revenueKey])
         : 0;
-      row.consultation_fees = referralSourceKey
-        ? toNumber_(consultationFeesByReferralSourceAndMonth[revenueKey])
-        : 0;
 
       return row;
     });
 
-  writeRowsToSheet_(CONFIG.sheets.factCaseProfitability, rows);
+  const consultationFeeRows = [];
+  const seenConsultationGroups = {};
+
+  rows.forEach(function(row) {
+    const referralSourceKey = normalizeText_(row.referral_source_linked);
+    const consultationKey = [referralSourceKey, row.entry_month].join('|');
+    const consultationData = consultationFeesByReferralSourceAndMonth[consultationKey];
+
+    if (!referralSourceKey || !consultationData || seenConsultationGroups[consultationKey]) return;
+
+    seenConsultationGroups[consultationKey] = true;
+
+    consultationFeeRows.push({
+      activity_name: 'Consultation Fee',
+      referral_source_linked: row.referral_source_linked,
+      entry_date: '',
+      entry_month: row.entry_month,
+      expense_count: consultationData.consultation_fee_count,
+      expense_amount: consultationData.consultation_fee_amount,
+      revenue_associated: toNumber_(retainerByReferralSourceAndMonth[consultationKey])
+    });
+  });
+
+  writeRowsToSheet_(CONFIG.sheets.factCaseProfitability, rows.concat(consultationFeeRows));
   formatFactCaseProfitabilityColumns_();
 }
 
@@ -196,7 +200,7 @@ function formatFactCaseProfitabilityColumns_() {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-  ['expense_count', 'expense_amount', 'revenue_associated', 'consultation_fees'].forEach(function(name) {
+  ['expense_count', 'expense_amount', 'revenue_associated'].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0.00');

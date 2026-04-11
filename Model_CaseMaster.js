@@ -87,6 +87,9 @@ function buildFactCaseMaster() {
       ),
       first_initial_consultation_title: firstConsult.first_initial_consultation_title || '',
       first_initial_consultation_event_type: firstConsult.first_initial_consultation_event_type || '',
+      consultation_fee: getConsultationFeeByEventType_(
+        firstConsult.first_initial_consultation_event_type || ''
+      ),
 
       matched_lead_name: firstNonEmpty_(leadMatch.lead_name),
       matched_lead_phone_number: firstNonEmpty_(leadMatch.phone_number),
@@ -214,6 +217,24 @@ function buildLeadMatchMethod_(args) {
   return parts.join('+');
 }
 
+function normalizeConsultationFeeEventType_(value) {
+  return normalizeText_(String(value || '').replace(/[_-]+/g, ' '));
+}
+
+function getConsultationFeeByEventType_(eventType) {
+  const normalizedEventType = normalizeConsultationFeeEventType_(eventType);
+
+  if (normalizedEventType === normalizeConsultationFeeEventType_('Initial Consultation')) {
+    return 100;
+  }
+
+  if (normalizedEventType === normalizeConsultationFeeEventType_('Detainee Visitation')) {
+    return 1500;
+  }
+
+  return 0;
+}
+
 function normalizeText_(value) {
   return String(value || '')
     .toLowerCase()
@@ -256,6 +277,7 @@ function formatFactCaseMasterColumns_() {
     'total_invoice_amount',
     'total_paid_so_far',
     'total_balance',
+    'consultation_fee',
     'lead_value',
     'lead_match_score'
   ].forEach(function(name) {
