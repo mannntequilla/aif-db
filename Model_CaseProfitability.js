@@ -25,6 +25,23 @@ function formatCaseProfitabilityEntryMonth_(value) {
   );
 }
 
+function getAllowedCaseProfitabilityActivityNames_() {
+  return [
+    'Belgrano',
+    'Spanish Smile',
+    'El abogado',
+    'Facebook Ads'
+  ];
+}
+
+function isAllowedCaseProfitabilityActivityName_(activityName) {
+  const normalizedActivityName = normalizeText_(activityName);
+
+  return getAllowedCaseProfitabilityActivityNames_().some(function(allowedName) {
+    return normalizedActivityName === normalizeText_(allowedName);
+  });
+}
+
 function getLinkedReferralSourceByActivityName_(activityName) {
   const normalizedActivityName = normalizeText_(activityName);
 
@@ -83,6 +100,8 @@ function buildFactCaseProfitability() {
 
   expenses.forEach(function(expenseRow) {
     const activityName = String(firstNonEmpty_(expenseRow.activity_name, 'Unclassified')).trim() || 'Unclassified';
+    if (!isAllowedCaseProfitabilityActivityName_(activityName)) return;
+
     const entryDate = extractCaseProfitabilityEntryDate_(expenseRow);
     const entryMonth = formatCaseProfitabilityEntryMonth_(entryDate);
     const groupKey = [normalizeText_(activityName), entryDate].join('|');
