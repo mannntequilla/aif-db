@@ -159,34 +159,14 @@ function buildFactCaseProfitability() {
       row.revenue_associated = referralSourceKey
         ? toNumber_(retainerByReferralSourceAndMonth[revenueKey])
         : 0;
+      row.consultation_fee = referralSourceKey && consultationFeesByReferralSourceAndMonth[revenueKey]
+        ? toNumber_(consultationFeesByReferralSourceAndMonth[revenueKey].consultation_fee_amount)
+        : 0;
 
       return row;
     });
 
-  const consultationFeeRows = [];
-  const seenConsultationGroups = {};
-
-  rows.forEach(function(row) {
-    const referralSourceKey = normalizeText_(row.referral_source_linked);
-    const consultationKey = [referralSourceKey, row.entry_month].join('|');
-    const consultationData = consultationFeesByReferralSourceAndMonth[consultationKey];
-
-    if (!referralSourceKey || !consultationData || seenConsultationGroups[consultationKey]) return;
-
-    seenConsultationGroups[consultationKey] = true;
-
-    consultationFeeRows.push({
-      activity_name: 'Consultation Fee',
-      referral_source_linked: row.referral_source_linked,
-      entry_date: '',
-      entry_month: row.entry_month,
-      expense_count: consultationData.consultation_fee_count,
-      expense_amount: consultationData.consultation_fee_amount,
-      revenue_associated: toNumber_(retainerByReferralSourceAndMonth[consultationKey])
-    });
-  });
-
-  writeRowsToSheet_(CONFIG.sheets.factCaseProfitability, rows.concat(consultationFeeRows));
+  writeRowsToSheet_(CONFIG.sheets.factCaseProfitability, rows);
   formatFactCaseProfitabilityColumns_();
 }
 
@@ -200,7 +180,7 @@ function formatFactCaseProfitabilityColumns_() {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-  ['expense_count', 'expense_amount', 'revenue_associated'].forEach(function(name) {
+  ['expense_count', 'expense_amount', 'revenue_associated', 'consultation_fee'].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0.00');
