@@ -75,6 +75,35 @@ function sumRetainersForReferralSourcesAndMonth_(retainersByReferralSourceAndMon
   }, 0);
 }
 
+function aggregateTotalRevenueByReferralSourceAndMonth_(caseMasterRows) {
+  const out = {};
+
+  caseMasterRows.forEach(function(caseRow) {
+    const referralSource = String(firstNonEmpty_(caseRow.lead_referral_source)).trim();
+    const referralSourceKey = normalizeText_(referralSource);
+    const metricMonth = formatCaseProfitabilityEntryMonth_(firstNonEmpty_(caseRow.case_opened_date));
+
+    if (!referralSourceKey || !metricMonth) return;
+
+    const groupKey = [referralSourceKey, metricMonth].join('|');
+
+    if (!out[groupKey]) {
+      out[groupKey] = 0;
+    }
+
+    out[groupKey] += toNumber_(caseRow.total_invoice_amount);
+  });
+
+  return out;
+}
+
+function sumTotalRevenueForReferralSourcesAndMonth_(totalRevenueByReferralSourceAndMonth, referralSources, entryMonth) {
+  return referralSources.reduce(function(total, referralSource) {
+    const revenueKey = [normalizeText_(referralSource), entryMonth].join('|');
+    return total + toNumber_(totalRevenueByReferralSourceAndMonth[revenueKey]);
+  }, 0);
+}
+
 function sumConsultationFeesForReferralSourcesAndMonth_(consultationFeesByReferralSourceAndMonth, referralSources, entryMonth) {
   return referralSources.reduce(function(total, referralSource) {
     const consultationKey = [normalizeText_(referralSource), entryMonth].join('|');
@@ -144,6 +173,7 @@ function buildFactCaseProfitability() {
   const expenses = readSheetAsObjectsIfExists_(CONFIG.sheets.rawExpenses);
   const caseMasterRows = readSheetAsObjectsIfExists_(CONFIG.sheets.factCaseMaster);
   const retainerByReferralSourceAndMonth = aggregateRetainersByReferralSourceAndMonth_(caseMasterRows);
+  const totalRevenueByReferralSourceAndMonth = aggregateTotalRevenueByReferralSourceAndMonth_(caseMasterRows);
   const consultationFeesByReferralSourceAndMonth = aggregateConsultationFeesByReferralSourceAndMonth_(caseMasterRows);
 
   if (!expenses.length) {
@@ -185,9 +215,16 @@ function buildFactCaseProfitability() {
       const row = grouped[groupKey];
       const linkedReferralSources = row.linked_referral_sources_raw || [];
 
-      row.revenue_associated = linkedReferralSources.length
+      row.retainer_revenue = linkedReferralSources.length
         ? sumRetainersForReferralSourcesAndMonth_(
             retainerByReferralSourceAndMonth,
+            linkedReferralSources,
+            row.entry_month
+          )
+        : 0;
+      row.total_revenue = linkedReferralSources.length
+        ? sumTotalRevenueForReferralSourcesAndMonth_(
+            totalRevenueByReferralSourceAndMonth,
             linkedReferralSources,
             row.entry_month
           )
@@ -226,7 +263,7 @@ function formatFactCaseProfitabilityColumns_() {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-  ['expense_count', 'expense_amount', 'revenue_associated', 'consultation_count', 'consultation_fee'].forEach(function(name) {
+  ['expense_count', 'expense_amount', 'retainer_revenue', 'total_revenue', 'consultation_count', 'consultation_fee'].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0.00');
