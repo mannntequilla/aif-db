@@ -83,6 +83,14 @@ function sumConsultationFeesForReferralSourcesAndMonth_(consultationFeesByReferr
   }, 0);
 }
 
+function sumConsultationCountsForReferralSourcesAndMonth_(consultationFeesByReferralSourceAndMonth, referralSources, entryMonth) {
+  return referralSources.reduce(function(total, referralSource) {
+    const consultationKey = [normalizeText_(referralSource), entryMonth].join('|');
+    const consultationData = consultationFeesByReferralSourceAndMonth[consultationKey];
+    return total + toNumber_(consultationData && consultationData.consultation_fee_count);
+  }, 0);
+}
+
 function aggregateRetainersByReferralSourceAndMonth_(caseMasterRows) {
   const out = {};
 
@@ -184,6 +192,13 @@ function buildFactCaseProfitability() {
             row.entry_month
           )
         : 0;
+      row.consultation_count = linkedReferralSources.length
+        ? sumConsultationCountsForReferralSourcesAndMonth_(
+            consultationFeesByReferralSourceAndMonth,
+            linkedReferralSources,
+            row.entry_month
+          )
+        : 0;
       row.consultation_fee = linkedReferralSources.length
         ? sumConsultationFeesForReferralSourcesAndMonth_(
             consultationFeesByReferralSourceAndMonth,
@@ -211,7 +226,7 @@ function formatFactCaseProfitabilityColumns_() {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-  ['expense_count', 'expense_amount', 'revenue_associated', 'consultation_fee'].forEach(function(name) {
+  ['expense_count', 'expense_amount', 'revenue_associated', 'consultation_count', 'consultation_fee'].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0.00');
