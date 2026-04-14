@@ -28,6 +28,8 @@ function formatCaseProfitabilityEntryMonth_(value) {
 function getAllowedCaseProfitabilityActivityNames_() {
   return [
     'Belgrano',
+    'Google Ads',
+    'Website',
     'Spanish Smile',
     'El abogado',
     'Facebook Ads',
@@ -41,6 +43,14 @@ function normalizeCaseProfitabilityActivityName_(activityName) {
 
   if (normalizedActivityName.indexOf(normalizeText_('Instagram')) !== -1) {
     return 'Instagram';
+  }
+
+  if (normalizedActivityName === normalizeText_('Google Ads')) {
+    return 'Google Ads';
+  }
+
+  if (normalizedActivityName === normalizeText_('Website')) {
+    return 'Website';
   }
 
   return rawName;
@@ -58,7 +68,15 @@ function getLinkedReferralSourcesByActivityName_(activityName) {
   const normalizedActivityName = normalizeText_(activityName);
 
   if (normalizedActivityName === normalizeText_('Belgrano')) {
-    return ['Google Ads', 'Website'];
+    return ['Belgrano'];
+  }
+
+  if (normalizedActivityName === normalizeText_('Google Ads')) {
+    return ['Google Ads'];
+  }
+
+  if (normalizedActivityName === normalizeText_('Website')) {
+    return ['Website'];
   }
 
   if (normalizedActivityName === normalizeText_('Spanish Smile')) {
@@ -70,7 +88,7 @@ function getLinkedReferralSourcesByActivityName_(activityName) {
   }
 
   if (normalizedActivityName === normalizeText_('Facebook Ads')) {
-    return ['Spanish Smile'];
+    return ['Facebook Ads'];
   }
 
   if (normalizedActivityName === normalizeText_('Instagram')) {
