@@ -12,6 +12,7 @@ function buildFactCaseMaster() {
   const firstConsultByCaseId = getFirstInitialConsultationByCaseId_(events);
   const leadMatches = buildLeadMatches_(cases, mycaseLeadsReport, clientsById);
   const retainerCustomFieldId = getCustomFieldIdByName_(customFields, 'Retainer', 'case');
+  const caseTypeCustomFieldId = getCustomFieldIdByName_(customFields, 'Case Type', 'case');
 
   const rows = cases.map(function(caseRow) {
     const caseId = firstNonEmpty_(caseRow.id, caseRow.case_id);
@@ -31,6 +32,7 @@ function buildFactCaseMaster() {
     const caseOpenedDate = firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date);
     const firstConsultDate = firstConsult.first_initial_consultation_date || '';
     const retainerValue = getCaseCustomFieldValueById_(caseRow, retainerCustomFieldId);
+    const caseTypeValue = getCaseCustomFieldValueById_(caseRow, caseTypeCustomFieldId);
 
     const leadType = classifyLeadType_(
       leadMatch,
@@ -57,6 +59,7 @@ function buildFactCaseMaster() {
       case_description: firstNonEmpty_(caseRow.description, caseRow.case_description),
       case_status: firstNonEmpty_(caseRow.status, caseRow.case_status),
       case_stage: firstNonEmpty_(caseRow.case_stage, caseRow.stage),
+      case_type: caseTypeValue,
       practice_area: firstNonEmpty_(caseRow.practice_area, caseRow.practice_area_name),
       office_name: extractOfficeName_(caseRow),
       retainer: retainerValue,
