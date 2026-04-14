@@ -1,7 +1,28 @@
+function parseDateOnlyLocal_(value) {
+  const text = String(value || '').trim().replace(/^"+|"+$/g, '');
+  const match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const localDate = new Date(year, monthIndex, day);
+
+  if (
+    localDate.getFullYear() !== year ||
+    localDate.getMonth() !== monthIndex ||
+    localDate.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return localDate;
+}
+
 function formatDateOnlyForSheet_(value) {
   if (!value) return '';
 
-  const d = new Date(value);
+  const d = parseDateOnlyLocal_(value) || new Date(value);
   if (isNaN(d.getTime())) return '';
 
   return Utilities.formatDate(
@@ -30,7 +51,7 @@ function toDateOnlyMaybe_(value) {
   if (!value) return '';
 
   const text = String(value).trim().replace(/^"+|"+$/g, '');
-  const d = new Date(text);
+  const d = parseDateOnlyLocal_(text) || new Date(text);
 
   if (isNaN(d.getTime())) {
     return '';
