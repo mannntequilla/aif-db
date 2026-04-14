@@ -30,12 +30,24 @@ function getAllowedCaseProfitabilityActivityNames_() {
     'Belgrano',
     'Spanish Smile',
     'El abogado',
-    'Facebook Ads'
+    'Facebook Ads',
+    'Instagram'
   ];
 }
 
+function normalizeCaseProfitabilityActivityName_(activityName) {
+  const rawName = String(firstNonEmpty_(activityName, 'Unclassified')).trim() || 'Unclassified';
+  const normalizedActivityName = normalizeText_(rawName);
+
+  if (normalizedActivityName.indexOf(normalizeText_('Instagram')) !== -1) {
+    return 'Instagram';
+  }
+
+  return rawName;
+}
+
 function isAllowedCaseProfitabilityActivityName_(activityName) {
-  const normalizedActivityName = normalizeText_(activityName);
+  const normalizedActivityName = normalizeText_(normalizeCaseProfitabilityActivityName_(activityName));
 
   return getAllowedCaseProfitabilityActivityNames_().some(function(allowedName) {
     return normalizedActivityName === normalizeText_(allowedName);
@@ -59,6 +71,10 @@ function getLinkedReferralSourcesByActivityName_(activityName) {
 
   if (normalizedActivityName === normalizeText_('Facebook Ads')) {
     return ['Spanish Smile'];
+  }
+
+  if (normalizedActivityName === normalizeText_('Instagram')) {
+    return ['Instagram'];
   }
 
   return [];
@@ -184,7 +200,7 @@ function buildFactCaseProfitability() {
   const grouped = {};
 
   expenses.forEach(function(expenseRow) {
-    const activityName = String(firstNonEmpty_(expenseRow.activity_name, 'Unclassified')).trim() || 'Unclassified';
+    const activityName = normalizeCaseProfitabilityActivityName_(expenseRow.activity_name);
     if (!isAllowedCaseProfitabilityActivityName_(activityName)) return;
 
     const entryDate = extractCaseProfitabilityEntryDate_(expenseRow);
