@@ -1,7 +1,5 @@
 function buildFactLeads() {
   const leads = readSheetAsObjectsIfExists_(CONFIG.sheets.rawMyCaseLeadsReport);
-  const cases = readSheetAsObjects_(CONFIG.sheets.rawCases);
-  const clients = readSheetAsObjects_(CONFIG.sheets.rawClients);
   const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
 
   if (!leads || !leads.length) {
@@ -10,20 +8,21 @@ function buildFactLeads() {
     return;
   }
 
-  const clientsById = indexBy_(clients, 'id');
-  const firstConsultByCaseId = getFirstInitialConsultationByCaseId_(events);
-  const caseMatchesByLeadIndex = buildCaseMatchesByLeadIndex_(leads, cases, clientsById);
+  const relevantEvents = getRelevantConsultationEvents_(events);
 
-  const rows = leads.map(function(leadRow, leadIndex) {
-    const matchedCase = caseMatchesByLeadIndex[leadIndex] || {};
-    const caseId = firstNonEmpty_(matchedCase.case_id);
-    const consultationEvent = caseId ? (firstConsultByCaseId[String(caseId)] || {}) : {};
-    const eventType = firstNonEmpty_(consultationEvent.first_initial_consultation_event_type);
+  const rows = leads.map(function(leadRow) {
+    const leadStatus = firstNonEmpty_(leadRow['Lead status']);
+    const shouldLookupConsultation = leadStatusImpliesConsultation_(leadStatus);
+    const matchedEvent = shouldLookupConsultation
+      ? findBestConsultationEventForLead_(leadRow, relevantEvents)
+      : null;
+
+    const eventType = firstNonEmpty_(matchedEvent && matchedEvent.event_type);
 
     return {
       lead_name: firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']),
       phone_number: firstNonEmpty_(leadRow['Phone number']),
-      lead_status: firstNonEmpty_(leadRow['Lead status']),
+      lead_status: leadStatus,
       practice_area: firstNonEmpty_(leadRow['Practice area']),
       date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow['Date added'])),
       lead_month: formatCaseProfitabilityEntryMonth_(firstNonEmpty_(leadRow['Date added'])),
@@ -31,13 +30,11 @@ function buildFactLeads() {
       referral_source: firstNonEmpty_(leadRow['Referral source']),
       referred_by: firstNonEmpty_(leadRow['Referred by']),
       lead_value: toNumber_(firstNonEmpty_(leadRow['Value'])),
-      matched_case_id: caseId,
-      matched_case_name: firstNonEmpty_(matchedCase.case_name),
-      matched_case_opened_date: toDateOnlyMaybe_(firstNonEmpty_(matchedCase.case_opened_date)),
-      lead_match_score: firstNonEmpty_(matchedCase.match_score),
-      lead_match_method: firstNonEmpty_(matchedCase.match_method),
-      consultation_event_date: toDateOnlyMaybe_(firstNonEmpty_(consultationEvent.first_initial_consultation_date)),
+      consultation_lookup_required: shouldLookupConsultation ? 'Yes' : 'No',
+      consultation_event_date: toDateOnlyMaybe_(firstNonEmpty_(matchedEvent && matchedEvent.event_date)),
       consultation_event_type: eventType,
+      consultation_event_title: firstNonEmpty_(matchedEvent && matchedEvent.event_title),
+      consultation_event_match_score: toNumber_(matchedEvent && matchedEvent.match_score),
       consultation_category: getConsultationCategoryByEventType_(eventType),
       has_consultation_event: eventType ? 'Yes' : 'No'
     };
@@ -47,76 +44,115 @@ function buildFactLeads() {
   formatFactLeadsColumns_();
 }
 
-function buildCaseMatchesByLeadIndex_(leads, cases, clientsById) {
-  const out = {};
+function getLeadStatusesThatImplyConsultation_() {
+  return [
+    'consult scheduled',
+    'no show',
+    'first follow-up',
+    'second follow-up',
+    'hot deal',
+    'direct visitation',
+    'contract',
+    'no case'
+  ];
+}
 
-  leads.forEach(function(leadRow, leadIndex) {
-    const leadName = normalizeText_(leadRow['Lead name']);
-    const leadPhone = normalizePhone_(leadRow['Phone number']);
-    const leadConversionDate = toDateOnlyMaybe_(leadRow['Conversion date']);
+function leadStatusImpliesConsultation_(status) {
+  const normalizedStatus = normalizeLeadStatus_(status);
+  return getLeadStatusesThatImplyConsultation_().indexOf(normalizedStatus) !== -1;
+}
 
-    let bestMatch = null;
-    let bestScore = 0;
-
-    cases.forEach(function(caseRow) {
-      const caseId = String(firstNonEmpty_(caseRow.id, caseRow.case_id) || '');
-      if (!caseId) return;
-
-      const linkedClientRef = findPreferredCaseClientRef_(caseRow);
-      const linkedClient = resolveClientFromRef_(linkedClientRef, clientsById) || {};
-
-      const caseOpenedDate = toDateOnlyMaybe_(
-        firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date)
-      );
-
-      const caseClientName = normalizeText_(
-        firstNonEmpty_(
-          linkedClient.full_name,
-          buildFullName_(linkedClient),
-          caseRow.name
-        )
-      );
-
-      const casePhone = normalizePhone_(
-        firstNonEmpty_(
-          linkedClient.cell_phone_number,
-          linkedClient.home_phone_number,
-          linkedClient.work_phone_number,
-          linkedClient.phone
-        )
-      );
-
-      let score = 0;
-
-      if (caseClientName && leadName && caseClientName === leadName) score += 3;
-      if (casePhone && leadPhone && casePhone === leadPhone) score += 4;
-      if (caseOpenedDate && leadConversionDate && caseOpenedDate === leadConversionDate) score += 2;
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = {
-          case_id: caseId,
-          case_name: firstNonEmpty_(caseRow.name, caseRow.case_name),
-          case_opened_date: firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date),
-          match_score: score,
-          match_method: buildLeadMatchMethod_({
-            caseClientName: caseClientName,
-            leadName: leadName,
-            casePhone: casePhone,
-            leadPhone: leadPhone,
-            caseOpenedDate: caseOpenedDate,
-            leadConversionDate: leadConversionDate
-          })
-        };
+function getRelevantConsultationEvents_(events) {
+  return events
+    .map(function(ev) {
+      const eventType = String(firstNonEmpty_(ev.event_type)).trim().toUpperCase();
+      if (
+        eventType !== 'INITIAL CONSULTATION' &&
+        eventType !== 'DETAINEE VISITATION'
+      ) {
+        return null;
       }
-    });
 
-    if (bestMatch && bestScore >= 4) {
-      out[leadIndex] = bestMatch;
+      const eventTitle = firstNonEmpty_(ev.name, ev.title, ev.subject);
+      const eventDate = firstNonEmpty_(ev.start, ev.start_at, ev.start_time, ev.date);
+      const searchableText = normalizeText_([
+        firstNonEmpty_(ev.name),
+        firstNonEmpty_(ev.title),
+        firstNonEmpty_(ev.subject),
+        firstNonEmpty_(ev.description)
+      ].join(' '));
+
+      return {
+        event_type: eventType,
+        event_title: eventTitle,
+        event_date: eventDate,
+        searchable_text: searchableText
+      };
+    })
+    .filter(Boolean);
+}
+
+function findBestConsultationEventForLead_(leadRow, relevantEvents) {
+  const leadName = firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']);
+  const leadDateAdded = toDateOnlyMaybe_(firstNonEmpty_(leadRow['Date added']));
+  const nameParts = splitLeadNameParts_(leadName);
+  const normalizedFullName = normalizeText_(leadName);
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  relevantEvents.forEach(function(eventRow) {
+    const score = scoreConsultationEventMatch_(eventRow, normalizedFullName, nameParts, leadDateAdded);
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = {
+        event_type: eventRow.event_type,
+        event_title: eventRow.event_title,
+        event_date: eventRow.event_date,
+        match_score: score
+      };
     }
   });
 
-  return out;
+  return bestScore >= 5 ? bestMatch : null;
+}
+
+function splitLeadNameParts_(leadName) {
+  const cleanName = normalizeText_(leadName);
+  const parts = cleanName.split(' ').filter(Boolean);
+
+  return {
+    full_name: cleanName,
+    first_name: parts[0] || '',
+    last_name: parts.length ? parts[parts.length - 1] : ''
+  };
+}
+
+function scoreConsultationEventMatch_(eventRow, normalizedFullName, nameParts, leadDateAdded) {
+  const searchableText = eventRow.searchable_text || '';
+  let score = 0;
+
+  if (normalizedFullName && searchableText.indexOf(normalizedFullName) !== -1) {
+    score += 6;
+  }
+
+  if (nameParts.first_name && searchableText.indexOf(nameParts.first_name) !== -1) {
+    score += 2;
+  }
+
+  if (nameParts.last_name && searchableText.indexOf(nameParts.last_name) !== -1) {
+    score += 3;
+  }
+
+  const eventDate = toDateOnlyMaybe_(eventRow.event_date);
+  if (leadDateAdded && eventDate) {
+    const dayDiff = Math.abs((eventDate.getTime() - leadDateAdded.getTime()) / 86400000);
+
+    if (dayDiff <= 7) score += 3;
+    else if (dayDiff <= 30) score += 1;
+  }
+
+  return score;
 }
 
 function getConsultationCategoryByEventType_(eventType) {
@@ -146,7 +182,6 @@ function formatFactLeadsColumns_() {
   [
     'date_added',
     'conversion_date',
-    'matched_case_opened_date',
     'consultation_event_date'
   ].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
@@ -155,7 +190,7 @@ function formatFactLeadsColumns_() {
     }
   });
 
-  ['lead_match_score', 'lead_value'].forEach(function(name) {
+  ['lead_value', 'consultation_event_match_score'].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0.00');
