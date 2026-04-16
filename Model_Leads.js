@@ -40,7 +40,11 @@ function buildFactLeads() {
         getConsultationCategoryByEventType_(eventType),
         inferredCategory
       ),
-      has_consultation_event: eventType ? 'Yes' : 'No'
+      has_consultation_event: firstNonEmpty_(
+        eventType ? 'Yes' : '',
+        inferredCategory ? 'Yes' : '',
+        'No'
+      )
     };
   });
 
@@ -62,7 +66,8 @@ function getLeadStatusesThatImplyInitialConsultation_() {
 
 function getLeadStatusesThatImplyDetaineeVisitation_() {
   return [
-    'direct visitation'
+    'direct visitation',
+    'detainee visitation'
   ];
 }
 
