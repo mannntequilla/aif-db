@@ -116,7 +116,27 @@ function formatLeadConsultationEventType_(eventType) {
 
 function scoreLeadEventNameMatch_(searchableText, normalizedLeadName) {
   if (!normalizedLeadName || !searchableText) return 0;
-  return searchableText.indexOf(normalizedLeadName) !== -1 ? 10 : 0;
+
+  if (searchableText.indexOf(normalizedLeadName) !== -1) {
+    return 10;
+  }
+
+  const nameParts = normalizedLeadName.split(' ').filter(Boolean);
+  if (nameParts.length >= 3) {
+    const firstThree = nameParts.slice(0, 3).join(' ');
+    if (searchableText.indexOf(firstThree) !== -1) {
+      return 8;
+    }
+  }
+
+  if (nameParts.length >= 2) {
+    const firstTwo = nameParts.slice(0, 2).join(' ');
+    if (searchableText.indexOf(firstTwo) !== -1) {
+      return 6;
+    }
+  }
+
+  return 0;
 }
 
 function formatFactLeadsColumns_() {
