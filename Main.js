@@ -81,10 +81,13 @@ function fullRefreshCaseMaster() {
     Logger.log('3. Build fact_case_master...');
     buildFactCaseMaster();
 
-    Logger.log('4. Build fact_case_profitability...');
+    Logger.log('4. Build fact_consultations...');
+    buildFactConsultations();
+
+    Logger.log('5. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('5. updateLastRefreshTimestamp_');
+    Logger.log('6. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshCaseMaster ===');
