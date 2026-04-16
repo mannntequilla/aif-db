@@ -11,16 +11,7 @@ function buildFactLeads() {
   const relevantEvents = getRelevantLeadEvents_(events);
 
   const rows = leads.map(function(leadRow) {
-    const initialConsultationEvent = findLatestLeadEventByType_(
-      leadRow,
-      relevantEvents,
-      'INITIAL CONSULTATION'
-    );
-    const detaineeVisitationEvent = findLatestLeadEventByType_(
-      leadRow,
-      relevantEvents,
-      'DETAINEE VISITATION'
-    );
+    const consultationEvent = findLatestLeadConsultationEvent_(leadRow, relevantEvents);
 
     return {
       lead_name: firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']),
@@ -28,24 +19,15 @@ function buildFactLeads() {
       lead_status: firstNonEmpty_(leadRow['Lead status']),
       practice_area: firstNonEmpty_(leadRow['Practice area']),
       date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow['Date added'])),
-      lead_month: formatCaseProfitabilityEntryMonth_(firstNonEmpty_(leadRow['Date added'])),
-      conversion_date: toDateOnlyMaybe_(firstNonEmpty_(leadRow['Conversion date'])),
       referral_source: firstNonEmpty_(leadRow['Referral source']),
       referred_by: firstNonEmpty_(leadRow['Referred by']),
       lead_value: toNumber_(firstNonEmpty_(leadRow['Value'])),
-
-      initial_consultation_event_date: toDateOnlyMaybe_(firstNonEmpty_(initialConsultationEvent && initialConsultationEvent.event_date)),
-      initial_consultation_event_title: firstNonEmpty_(initialConsultationEvent && initialConsultationEvent.event_title),
-      initial_consultation_event_created_at: toDateOnlyMaybe_(firstNonEmpty_(initialConsultationEvent && initialConsultationEvent.event_created_at)),
-      initial_consultation_match_score: toNumber_(initialConsultationEvent && initialConsultationEvent.match_score),
-
-      detainee_visitation_event_date: toDateOnlyMaybe_(firstNonEmpty_(detaineeVisitationEvent && detaineeVisitationEvent.event_date)),
-      detainee_visitation_event_title: firstNonEmpty_(detaineeVisitationEvent && detaineeVisitationEvent.event_title),
-      detainee_visitation_event_created_at: toDateOnlyMaybe_(firstNonEmpty_(detaineeVisitationEvent && detaineeVisitationEvent.event_created_at)),
-      detainee_visitation_match_score: toNumber_(detaineeVisitationEvent && detaineeVisitationEvent.match_score),
-
-      has_initial_consultation_event: initialConsultationEvent ? 'Yes' : 'No',
-      has_detainee_visitation_event: detaineeVisitationEvent ? 'Yes' : 'No'
+      consultation_event_date: toDateOnlyMaybe_(firstNonEmpty_(consultationEvent && consultationEvent.event_date)),
+      consultation_event_title: firstNonEmpty_(consultationEvent && consultationEvent.event_title),
+      consultation_event_created_at: toDateOnlyMaybe_(firstNonEmpty_(consultationEvent && consultationEvent.event_created_at)),
+      consultation_event_type: formatLeadConsultationEventType_(firstNonEmpty_(consultationEvent && consultationEvent.event_type)),
+      consultation_match_score: toNumber_(consultationEvent && consultationEvent.match_score),
+      has_consultation_event: consultationEvent ? 'Yes' : 'No'
     };
   });
 
@@ -87,7 +69,7 @@ function normalizeLeadEventType_(eventType) {
     .replace(/[_-]+/g, ' ');
 }
 
-function findLatestLeadEventByType_(leadRow, relevantEvents, eventType) {
+function findLatestLeadConsultationEvent_(leadRow, relevantEvents) {
   const leadName = firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']);
   const normalizedLeadName = normalizeText_(leadName);
   const leadNameParts = splitLeadNameParts_(leadName);
@@ -96,8 +78,6 @@ function findLatestLeadEventByType_(leadRow, relevantEvents, eventType) {
   let latestCreatedAt = null;
 
   relevantEvents.forEach(function(eventRow) {
-    if (eventRow.event_type !== eventType) return;
-
     const matchScore = scoreLeadEventNameMatch_(eventRow.searchable_text, normalizedLeadName, leadNameParts);
     if (matchScore < 5) return;
 
@@ -119,6 +99,20 @@ function findLatestLeadEventByType_(leadRow, relevantEvents, eventType) {
   });
 
   return bestMatch;
+}
+
+function formatLeadConsultationEventType_(eventType) {
+  const normalizedEventType = normalizeLeadEventType_(eventType);
+
+  if (normalizedEventType === 'INITIAL CONSULTATION') {
+    return 'Initial Consultation';
+  }
+
+  if (normalizedEventType === 'DETAINEE VISITATION') {
+    return 'Detainee Visitation';
+  }
+
+  return '';
 }
 
 function splitLeadNameParts_(leadName) {
@@ -162,11 +156,8 @@ function formatFactLeadsColumns_() {
 
   [
     'date_added',
-    'conversion_date',
-    'initial_consultation_event_date',
-    'initial_consultation_event_created_at',
-    'detainee_visitation_event_date',
-    'detainee_visitation_event_created_at'
+    'consultation_event_date',
+    'consultation_event_created_at'
   ].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
@@ -176,8 +167,7 @@ function formatFactLeadsColumns_() {
 
   [
     'lead_value',
-    'initial_consultation_match_score',
-    'detainee_visitation_match_score'
+    'consultation_match_score'
   ].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
