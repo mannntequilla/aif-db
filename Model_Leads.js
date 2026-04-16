@@ -72,13 +72,12 @@ function normalizeLeadEventType_(eventType) {
 function findLatestLeadConsultationEvent_(leadRow, relevantEvents) {
   const leadName = firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']);
   const normalizedLeadName = normalizeText_(leadName);
-  const leadNameParts = splitLeadNameParts_(leadName);
 
   let bestMatch = null;
   let latestCreatedAt = null;
 
   relevantEvents.forEach(function(eventRow) {
-    const matchScore = scoreLeadEventNameMatch_(eventRow.searchable_text, normalizedLeadName, leadNameParts);
+    const matchScore = scoreLeadEventNameMatch_(eventRow.searchable_text, normalizedLeadName);
     if (matchScore < 5) return;
 
     const createdAt = toDateMaybe_(eventRow.event_created_at);
@@ -115,33 +114,9 @@ function formatLeadConsultationEventType_(eventType) {
   return '';
 }
 
-function splitLeadNameParts_(leadName) {
-  const cleanName = normalizeText_(leadName);
-  const parts = cleanName.split(' ').filter(Boolean);
-
-  return {
-    full_name: cleanName,
-    first_name: parts[0] || '',
-    last_name: parts.length ? parts[parts.length - 1] : ''
-  };
-}
-
-function scoreLeadEventNameMatch_(searchableText, normalizedLeadName, leadNameParts) {
-  let score = 0;
-
-  if (normalizedLeadName && searchableText.indexOf(normalizedLeadName) !== -1) {
-    score += 6;
-  }
-
-  if (leadNameParts.first_name && searchableText.indexOf(leadNameParts.first_name) !== -1) {
-    score += 2;
-  }
-
-  if (leadNameParts.last_name && searchableText.indexOf(leadNameParts.last_name) !== -1) {
-    score += 3;
-  }
-
-  return score;
+function scoreLeadEventNameMatch_(searchableText, normalizedLeadName) {
+  if (!normalizedLeadName || !searchableText) return 0;
+  return searchableText.indexOf(normalizedLeadName) !== -1 ? 10 : 0;
 }
 
 function formatFactLeadsColumns_() {
