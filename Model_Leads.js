@@ -56,6 +56,7 @@ function getLeadStatusesThatImplyInitialConsultation_() {
   return [
     'consult scheduled',
     'no show',
+    'pending payments',
     'first follow-up',
     'second follow-up',
     'hot deal',
@@ -120,9 +121,11 @@ function findBestConsultationEventForLead_(leadRow, relevantEvents, expectedCate
   const leadDateAdded = toDateOnlyMaybe_(firstNonEmpty_(leadRow['Date added']));
   const nameParts = splitLeadNameParts_(leadName);
   const normalizedFullName = normalizeText_(leadName);
+  const today = toDateOnlyMaybe_(new Date());
 
   let bestMatch = null;
   let bestScore = 0;
+  let bestRecencyDistance = Number.POSITIVE_INFINITY;
 
   relevantEvents.forEach(function(eventRow) {
     if (
@@ -133,8 +136,14 @@ function findBestConsultationEventForLead_(leadRow, relevantEvents, expectedCate
     }
 
     const score = scoreConsultationEventMatch_(eventRow, normalizedFullName, nameParts, leadDateAdded);
-    if (score > bestScore) {
+    const recencyDistance = getEventDistanceFromToday_(eventRow.event_date, today);
+
+    if (
+      score > bestScore ||
+      (score === bestScore && recencyDistance < bestRecencyDistance)
+    ) {
       bestScore = score;
+      bestRecencyDistance = recencyDistance;
       bestMatch = {
         event_type: eventRow.event_type,
         event_title: eventRow.event_title,
@@ -145,6 +154,13 @@ function findBestConsultationEventForLead_(leadRow, relevantEvents, expectedCate
   });
 
   return bestScore >= 5 ? bestMatch : null;
+}
+
+function getEventDistanceFromToday_(eventDateValue, today) {
+  const eventDate = toDateOnlyMaybe_(eventDateValue);
+  if (!eventDate || !today) return Number.POSITIVE_INFINITY;
+
+  return Math.abs((today.getTime() - eventDate.getTime()) / 86400000);
 }
 
 function splitLeadNameParts_(leadName) {
