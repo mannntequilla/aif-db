@@ -101,6 +101,54 @@ function fullRefreshCaseMaster() {
   }
 }
 
+function fullRefreshAll() {
+  const lock = LockService.getScriptLock();
+
+  if (!lock.tryLock(30000)) {
+    Logger.log('Ya hay una ejecucion en curso.');
+    return;
+  }
+
+  const start = new Date();
+
+  try {
+    Logger.log('=== INICIO fullRefreshAll ===');
+
+    Logger.log('1. Sync all raw sheets...');
+    syncAllRaw();
+
+    Logger.log('2. Import latest MyCase leads report...');
+    importLatestMyCaseLeadsReportFromDrive();
+
+    Logger.log('3. Build fact_case_master...');
+    buildFactCaseMaster();
+
+    Logger.log('4. Build fact_consultations...');
+    buildFactConsultations();
+
+    Logger.log('5. Build fact_case_profitability...');
+    buildFactCaseProfitability();
+
+    Logger.log('6. Build leads funnel...');
+    buildLeadsFunnelByDate();
+
+    Logger.log('7. Build case staff table...');
+    buildCaseStaffTable();
+
+    Logger.log('8. updateLastRefreshTimestamp_');
+    updateLastRefreshTimestamp_();
+
+    Logger.log('=== FIN OK fullRefreshAll ===');
+    Logger.log('Duracion total: ' + ((new Date() - start) / 1000) + ' segundos');
+  } catch (error) {
+    Logger.log('ERROR en fullRefreshAll: ' + error.message);
+    Logger.log(error.stack);
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function refreshMyCaseLeadsReport(){
   importLatestMyCaseLeadsReportFromDrive()
 }
