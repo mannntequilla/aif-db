@@ -12,9 +12,10 @@ function buildFactLeads() {
 
   const rows = leads.map(function(leadRow) {
     const leadStatus = firstNonEmpty_(leadRow['Lead status']);
-    const shouldLookupConsultation = leadStatusImpliesConsultation_(leadStatus);
+    const inferredCategory = getConsultationCategoryByLeadStatus_(leadStatus);
+    const shouldLookupConsultation = !!inferredCategory;
     const matchedEvent = shouldLookupConsultation
-      ? findBestConsultationEventForLead_(leadRow, relevantEvents)
+      ? findBestConsultationEventForLead_(leadRow, relevantEvents, inferredCategory)
       : null;
 
     const eventType = firstNonEmpty_(matchedEvent && matchedEvent.event_type);
@@ -35,7 +36,10 @@ function buildFactLeads() {
       consultation_event_type: eventType,
       consultation_event_title: firstNonEmpty_(matchedEvent && matchedEvent.event_title),
       consultation_event_match_score: toNumber_(matchedEvent && matchedEvent.match_score),
-      consultation_category: getConsultationCategoryByEventType_(eventType),
+      consultation_category: firstNonEmpty_(
+        getConsultationCategoryByEventType_(eventType),
+        inferredCategory
+      ),
       has_consultation_event: eventType ? 'Yes' : 'No'
     };
   });
@@ -44,22 +48,36 @@ function buildFactLeads() {
   formatFactLeadsColumns_();
 }
 
-function getLeadStatusesThatImplyConsultation_() {
+function getLeadStatusesThatImplyInitialConsultation_() {
   return [
     'consult scheduled',
     'no show',
     'first follow-up',
     'second follow-up',
     'hot deal',
-    'direct visitation',
     'contract',
     'no case'
   ];
 }
 
-function leadStatusImpliesConsultation_(status) {
+function getLeadStatusesThatImplyDetaineeVisitation_() {
+  return [
+    'direct visitation'
+  ];
+}
+
+function getConsultationCategoryByLeadStatus_(status) {
   const normalizedStatus = normalizeLeadStatus_(status);
-  return getLeadStatusesThatImplyConsultation_().indexOf(normalizedStatus) !== -1;
+
+  if (getLeadStatusesThatImplyDetaineeVisitation_().indexOf(normalizedStatus) !== -1) {
+    return 'Detainee Visitation';
+  }
+
+  if (getLeadStatusesThatImplyInitialConsultation_().indexOf(normalizedStatus) !== -1) {
+    return 'Initial Consultation';
+  }
+
+  return '';
 }
 
 function getRelevantConsultationEvents_(events) {
@@ -92,7 +110,7 @@ function getRelevantConsultationEvents_(events) {
     .filter(Boolean);
 }
 
-function findBestConsultationEventForLead_(leadRow, relevantEvents) {
+function findBestConsultationEventForLead_(leadRow, relevantEvents, expectedCategory) {
   const leadName = firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']);
   const leadDateAdded = toDateOnlyMaybe_(firstNonEmpty_(leadRow['Date added']));
   const nameParts = splitLeadNameParts_(leadName);
@@ -102,6 +120,13 @@ function findBestConsultationEventForLead_(leadRow, relevantEvents) {
   let bestScore = 0;
 
   relevantEvents.forEach(function(eventRow) {
+    if (
+      expectedCategory &&
+      getConsultationCategoryByEventType_(eventRow.event_type) !== expectedCategory
+    ) {
+      return;
+    }
+
     const score = scoreConsultationEventMatch_(eventRow, normalizedFullName, nameParts, leadDateAdded);
     if (score > bestScore) {
       bestScore = score;
