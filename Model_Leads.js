@@ -1,6 +1,5 @@
 function buildFactLeads() {
   const leads = readSheetAsObjectsIfExists_(CONFIG.sheets.rawMyCaseLeadsReport);
-  const events = readSheetAsObjects_(CONFIG.sheets.rawEvents);
 
   if (!leads || !leads.length) {
     writeRowsToSheet_(CONFIG.sheets.factLeads, []);
@@ -8,26 +7,25 @@ function buildFactLeads() {
     return;
   }
 
-  const relevantEvents = getRelevantLeadEvents_(events);
-
   const rows = leads.map(function(leadRow) {
-    const consultationEvent = findLatestLeadConsultationEvent_(leadRow, relevantEvents);
+    const leadStatus = firstNonEmpty_(leadRow['Lead status']);
+    const consultationEventType = classifyLeadConsultationEventTypeByStatus_(leadStatus);
 
     return {
       lead_name: firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']),
       phone_number: firstNonEmpty_(leadRow['Phone number']),
-      lead_status: firstNonEmpty_(leadRow['Lead status']),
+      lead_status: leadStatus,
       practice_area: firstNonEmpty_(leadRow['Practice area']),
       date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow['Date added'])),
       referral_source: firstNonEmpty_(leadRow['Referral source']),
       referred_by: firstNonEmpty_(leadRow['Referred by']),
       lead_value: toNumber_(firstNonEmpty_(leadRow['Value'])),
-      consultation_event_date: toDateOnlyMaybe_(firstNonEmpty_(consultationEvent && consultationEvent.event_date)),
-      consultation_event_title: firstNonEmpty_(consultationEvent && consultationEvent.event_title),
-      consultation_event_created_at: toDateOnlyMaybe_(firstNonEmpty_(consultationEvent && consultationEvent.event_created_at)),
-      consultation_event_type: formatLeadConsultationEventType_(firstNonEmpty_(consultationEvent && consultationEvent.event_type)),
-      consultation_match_score: toNumber_(consultationEvent && consultationEvent.match_score),
-      has_consultation_event: consultationEvent ? 'Yes' : 'No'
+      consultation_event_date: '',
+      consultation_event_title: '',
+      consultation_event_created_at: '',
+      consultation_event_type: consultationEventType,
+      consultation_match_score: '',
+      has_consultation_event: consultationEventType ? 'Yes' : 'No'
     };
   });
 
@@ -35,108 +33,42 @@ function buildFactLeads() {
   formatFactLeadsColumns_();
 }
 
-function getRelevantLeadEvents_(events) {
-  return events
-    .map(function(ev) {
-      const eventType = normalizeLeadEventType_(firstNonEmpty_(ev.event_type));
-      if (
-        eventType !== 'INITIAL CONSULTATION' &&
-        eventType !== 'DETAINEE VISITATION'
-      ) {
-        return null;
-      }
-
-      return {
-        event_type: eventType,
-        event_title: firstNonEmpty_(ev.name, ev.title, ev.subject),
-        event_date: firstNonEmpty_(ev.start, ev.start_at, ev.start_time, ev.date),
-        event_created_at: firstNonEmpty_(ev.created_at, ev.updated_at, ev.start, ev.start_at, ev.date),
-        searchable_text: normalizeText_([
-          firstNonEmpty_(ev.name),
-          firstNonEmpty_(ev.title),
-          firstNonEmpty_(ev.subject),
-          firstNonEmpty_(ev.description)
-        ].join(' '))
-      };
-    })
-    .filter(Boolean);
+function getLeadStatusesForInitialConsultation_() {
+  return [
+    'consult scheduled',
+    'first follow-up',
+    'second follow-up',
+    'hot deal',
+    'no show',
+    'no case'
+  ];
 }
 
-function normalizeLeadEventType_(eventType) {
-  return String(firstNonEmpty_(eventType))
-    .trim()
-    .toUpperCase()
-    .replace(/[_-]+/g, ' ');
+function getLeadStatusesForDetaineeVisitation_() {
+  return [
+    'detainee visitation'
+  ];
 }
 
-function findLatestLeadConsultationEvent_(leadRow, relevantEvents) {
-  const leadName = firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']);
-  const normalizedLeadName = normalizeText_(leadName);
+function classifyLeadConsultationEventTypeByStatus_(status) {
+  const normalizedStatus = normalizeLeadStatus_(status);
 
-  let bestMatch = null;
-  let latestCreatedAt = null;
-
-  relevantEvents.forEach(function(eventRow) {
-    const matchScore = scoreLeadEventNameMatch_(eventRow.searchable_text, normalizedLeadName);
-    if (matchScore < 5) return;
-
-    const createdAt = toDateMaybe_(eventRow.event_created_at);
-    const createdAtTime = createdAt && createdAt.getTime ? createdAt.getTime() : Number.NEGATIVE_INFINITY;
-    const latestCreatedAtTime =
-      latestCreatedAt && latestCreatedAt.getTime ? latestCreatedAt.getTime() : Number.NEGATIVE_INFINITY;
-
-    if (!bestMatch || createdAtTime > latestCreatedAtTime) {
-      bestMatch = {
-        event_type: eventRow.event_type,
-        event_title: eventRow.event_title,
-        event_date: eventRow.event_date,
-        event_created_at: eventRow.event_created_at,
-        match_score: matchScore
-      };
-      latestCreatedAt = createdAt;
-    }
-  });
-
-  return bestMatch;
-}
-
-function formatLeadConsultationEventType_(eventType) {
-  const normalizedEventType = normalizeLeadEventType_(eventType);
-
-  if (normalizedEventType === 'INITIAL CONSULTATION') {
-    return 'Initial Consultation';
+  if (getLeadStatusesForDetaineeVisitation_().indexOf(normalizedStatus) !== -1) {
+    return 'Detainee Visitation';
   }
 
-  if (normalizedEventType === 'DETAINEE VISITATION') {
-    return 'Detainee Visitation';
+  if (getLeadStatusesForInitialConsultation_().indexOf(normalizedStatus) !== -1) {
+    return 'Initial Consultation';
   }
 
   return '';
 }
 
-function scoreLeadEventNameMatch_(searchableText, normalizedLeadName) {
-  if (!normalizedLeadName || !searchableText) return 0;
-
-  if (searchableText.indexOf(normalizedLeadName) !== -1) {
-    return 10;
-  }
-
-  const nameParts = normalizedLeadName.split(' ').filter(Boolean);
-  if (nameParts.length >= 3) {
-    const firstThree = nameParts.slice(0, 3).join(' ');
-    if (searchableText.indexOf(firstThree) !== -1) {
-      return 8;
-    }
-  }
-
-  if (nameParts.length >= 2) {
-    const firstTwo = nameParts.slice(0, 2).join(' ');
-    if (searchableText.indexOf(firstTwo) !== -1) {
-      return 6;
-    }
-  }
-
-  return 0;
+function normalizeLeadStatus_(status) {
+  return String(status || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 }
 
 function formatFactLeadsColumns_() {
