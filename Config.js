@@ -24,6 +24,7 @@ const CONFIG = {
     factCaseMaster: 'fact_case_master',
     factCaseProfitability: 'fact_case_profitability',
     factConsultations: 'fact_consultations',
+    factLeads: 'fact_leads',
     taskReport: 'task_report',
     rawMyCaseLeadsReport: 'raw_mycase_leads_report',
     funnelLeadsByDate: 'funnel_leads_by_date',

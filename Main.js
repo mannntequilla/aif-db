@@ -78,16 +78,19 @@ function fullRefreshCaseMaster() {
     Logger.log('2. Import latest MyCase leads report...');
     importLatestMyCaseLeadsReportFromDrive();
 
-    Logger.log('3. Build fact_case_master...');
+    Logger.log('3. Build fact_leads...');
+    buildFactLeads();
+
+    Logger.log('4. Build fact_case_master...');
     buildFactCaseMaster();
 
-    Logger.log('4. Build fact_consultations...');
+    Logger.log('5. Build fact_consultations...');
     buildFactConsultations();
 
-    Logger.log('5. Build fact_case_profitability...');
+    Logger.log('6. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('6. updateLastRefreshTimestamp_');
+    Logger.log('7. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshCaseMaster ===');
@@ -120,22 +123,25 @@ function fullRefreshAll() {
     Logger.log('2. Import latest MyCase leads report...');
     importLatestMyCaseLeadsReportFromDrive();
 
-    Logger.log('3. Build fact_case_master...');
+    Logger.log('3. Build fact_leads...');
+    buildFactLeads();
+
+    Logger.log('4. Build fact_case_master...');
     buildFactCaseMaster();
 
-    Logger.log('4. Build fact_consultations...');
+    Logger.log('5. Build fact_consultations...');
     buildFactConsultations();
 
-    Logger.log('5. Build fact_case_profitability...');
+    Logger.log('6. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('6. Build leads funnel...');
+    Logger.log('7. Build leads funnel...');
     buildLeadsFunnelByDate();
 
-    Logger.log('7. Build case staff table...');
+    Logger.log('8. Build case staff table...');
     buildCaseStaffTable();
 
-    Logger.log('8. updateLastRefreshTimestamp_');
+    Logger.log('9. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshAll ===');
