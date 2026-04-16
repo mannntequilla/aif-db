@@ -21,7 +21,7 @@ function buildFactLeads() {
     const eventType = firstNonEmpty_(consultationEvent.first_initial_consultation_event_type);
 
     return {
-      lead_name: firstNonEmpty_(leadRow['Lead name']),
+      lead_name: firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']),
       phone_number: firstNonEmpty_(leadRow['Phone number']),
       lead_status: firstNonEmpty_(leadRow['Lead status']),
       practice_area: firstNonEmpty_(leadRow['Practice area']),
