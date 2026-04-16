@@ -9,7 +9,13 @@ function getOrCreateSheet_(name) {
 
 function clearSheet_(sheetName) {
   const sheet = getOrCreateSheet_(sheetName);
-  sheet.clearContents();
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+
+  if (lastRow > 0 && lastCol > 0) {
+    sheet.getRange(1, 1, lastRow, lastCol).clearContent();
+  }
+
   return sheet;
 }
 
@@ -63,7 +69,12 @@ function writeRowsToSheet_(sheetName, rows) {
   });
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(2, 1, values.length, headers.length).setValues(values);
+
+  const batchSize = 500;
+  for (let start = 0; start < values.length; start += batchSize) {
+    const batch = values.slice(start, start + batchSize);
+    sheet.getRange(2 + start, 1, batch.length, headers.length).setValues(batch);
+  }
 }
 
 function readSheetAsObjects_(sheetName) {
