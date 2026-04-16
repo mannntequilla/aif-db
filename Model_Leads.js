@@ -21,7 +21,6 @@ function buildFactLeads() {
     const eventType = firstNonEmpty_(consultationEvent.first_initial_consultation_event_type);
 
     return {
-      lead_row_number: leadIndex + 1,
       lead_name: firstNonEmpty_(leadRow['Lead name']),
       phone_number: firstNonEmpty_(leadRow['Phone number']),
       lead_status: firstNonEmpty_(leadRow['Lead status']),
@@ -156,7 +155,7 @@ function formatFactLeadsColumns_() {
     }
   });
 
-  ['lead_row_number', 'lead_match_score', 'lead_value'].forEach(function(name) {
+  ['lead_match_score', 'lead_value'].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0.00');
