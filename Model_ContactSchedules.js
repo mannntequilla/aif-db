@@ -1,67 +1,90 @@
 function buildFactContactSchedules() {
   const scheduledEvents = readSheetAsObjectsIfExists_(CONFIG.sheets.factScheduledEvents);
   const leads = readSheetAsObjectsIfExists_(CONFIG.sheets.rawLeads);
+  const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
+  const clients = readSheetAsObjectsIfExists_(CONFIG.sheets.rawClients);
 
-  const rowsByNameKey = {};
+  const casesById = indexBy_(cases, 'id');
+  const clientsById = indexBy_(clients, 'id');
+  const rowsByCaseId = {};
 
   leads.forEach(function(leadRow) {
-    const fullName = extractRawLeadFullName_(leadRow);
-    const nameKey = normalizeText_(fullName);
-    if (!nameKey) return;
+    const caseId = extractLeadCaseId_(leadRow);
+    const contactName = extractRawLeadFullName_(leadRow);
 
-    if (!rowsByNameKey[nameKey]) {
-      rowsByNameKey[nameKey] = {
-        contact_name: fullName,
-        scheduled_event_title: '',
-        scheduled_event_type: '',
-        scheduled_event_start: '',
-        scheduled_event_record_stage: '',
-        has_scheduled_event: 'No'
-      };
-    }
+    if (!caseId || !contactName) return;
+
+    rowsByCaseId[caseId] = {
+      date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow.created_at)),
+      case_id: caseId,
+      contact_name: contactName,
+      event_title: 'No event found',
+      event_start: '',
+      event_type: ''
+    };
   });
 
   scheduledEvents.forEach(function(eventRow) {
-    const contactName = String(firstNonEmpty_(eventRow.associated_contact_name)).trim();
-    const nameKey = normalizeText_(contactName);
-    if (!nameKey) return;
+    const caseId = String(firstNonEmpty_(eventRow.case_id)).trim();
+    if (!caseId) return;
 
-    if (!rowsByNameKey[nameKey]) {
-      rowsByNameKey[nameKey] = {
+    const existingRow = rowsByCaseId[caseId];
+    const contactName = String(firstNonEmpty_(eventRow.associated_contact_name, eventRow.record_name)).trim();
+    const candidateEventStart = toDateMaybe_(firstNonEmpty_(eventRow.event_start, eventRow.event_created_at));
+    const currentEventStart = existingRow
+      ? toDateMaybe_(firstNonEmpty_(existingRow.event_start))
+      : null;
+
+    if (!rowsByCaseId[caseId]) {
+      rowsByCaseId[caseId] = {
+        date_added: resolveCaseContactCreatedAt_(caseId, casesById, clientsById),
+        case_id: caseId,
         contact_name: contactName,
-        scheduled_event_title: '',
-        scheduled_event_type: '',
-        scheduled_event_start: '',
-        scheduled_event_record_stage: '',
-        has_scheduled_event: 'No'
+        event_title: firstNonEmpty_(eventRow.event_title, 'No event found'),
+        event_start: toDateMaybe_(firstNonEmpty_(eventRow.event_start)),
+        event_type: firstNonEmpty_(eventRow.event_type)
       };
+      return;
     }
 
-    const currentRow = rowsByNameKey[nameKey];
-    const candidateStart = toDateMaybe_(firstNonEmpty_(eventRow.event_start, eventRow.event_created_at));
-    const currentStart = toDateMaybe_(firstNonEmpty_(currentRow.scheduled_event_start));
+    if (!rowsByCaseId[caseId].contact_name && contactName) {
+      rowsByCaseId[caseId].contact_name = contactName;
+    }
 
-    const candidateTime = candidateStart && candidateStart.getTime ? candidateStart.getTime() : Number.NEGATIVE_INFINITY;
-    const currentTime = currentStart && currentStart.getTime ? currentStart.getTime() : Number.NEGATIVE_INFINITY;
+    const candidateTime = candidateEventStart && candidateEventStart.getTime
+      ? candidateEventStart.getTime()
+      : Number.NEGATIVE_INFINITY;
+    const currentTime = currentEventStart && currentEventStart.getTime
+      ? currentEventStart.getTime()
+      : Number.NEGATIVE_INFINITY;
 
-    if (candidateTime >= currentTime) {
-      currentRow.contact_name = contactName;
-      currentRow.scheduled_event_title = firstNonEmpty_(eventRow.event_title);
-      currentRow.scheduled_event_type = firstNonEmpty_(eventRow.event_type);
-      currentRow.scheduled_event_start = toDateMaybe_(firstNonEmpty_(eventRow.event_start));
-      currentRow.scheduled_event_record_stage = firstNonEmpty_(eventRow.record_stage);
-      currentRow.has_scheduled_event = firstNonEmpty_(eventRow.event_title, eventRow.event_type) ? 'Yes' : 'No';
+    if (candidateTime >= currentTime && firstNonEmpty_(eventRow.event_title, eventRow.event_type)) {
+      rowsByCaseId[caseId].event_title = firstNonEmpty_(eventRow.event_title, 'No event found');
+      rowsByCaseId[caseId].event_start = toDateMaybe_(firstNonEmpty_(eventRow.event_start));
+      rowsByCaseId[caseId].event_type = firstNonEmpty_(eventRow.event_type);
     }
   });
 
-  const rows = Object.keys(rowsByNameKey)
-    .sort()
-    .map(function(nameKey) {
-      return rowsByNameKey[nameKey];
+  const rows = Object.keys(rowsByCaseId)
+    .sort(function(a, b) {
+      return String(a).localeCompare(String(b));
+    })
+    .map(function(caseId) {
+      return rowsByCaseId[caseId];
     });
 
   writeRowsToSheet_(CONFIG.sheets.factLeads, rows);
   formatFactContactSchedulesColumns_();
+}
+
+function extractLeadCaseId_(leadRow) {
+  return String(
+    firstNonEmpty_(
+      leadRow.case_id,
+      safeGet_(parseJsonMaybe_(leadRow.case), 'id', ''),
+      leadRow.case
+    ) || ''
+  ).trim();
 }
 
 function extractRawLeadFullName_(leadRow) {
@@ -79,6 +102,16 @@ function extractRawLeadFullName_(leadRow) {
   ).trim();
 }
 
+function resolveCaseContactCreatedAt_(caseId, casesById, clientsById) {
+  const caseRow = casesById[String(caseId)] || null;
+  if (!caseRow) return '';
+
+  const clientRef = findPreferredCaseClientRef_(caseRow);
+  const client = resolveClientFromRef_(clientRef, clientsById);
+
+  return client ? toDateOnlyMaybe_(firstNonEmpty_(client.created_at)) : '';
+}
+
 function formatFactContactSchedulesColumns_() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.factLeads);
   if (!sheet) return;
@@ -89,10 +122,11 @@ function formatFactContactSchedulesColumns_() {
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-  ['scheduled_event_start'].forEach(function(name) {
+  ['date_added', 'event_start'].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
-      sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+      const format = name === 'date_added' ? 'yyyy-mm-dd' : 'yyyy-mm-dd hh:mm:ss';
+      sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat(format);
     }
   });
 }
