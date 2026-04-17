@@ -10,13 +10,13 @@ function buildFactScheduledEvents() {
     return;
   }
 
-  const leadsById = indexBy_(leads, 'id');
+  const leadsByCaseId = indexLeadsByCaseId_(leads);
   const casesById = indexBy_(cases, 'id');
   const clientsById = indexBy_(clients, 'id');
 
   const rows = events.map(function(eventRow) {
     const eventCaseId = String(firstNonEmpty_(eventRow.case_id, safeGet_(parseJsonMaybe_(eventRow.case), 'id', '')) || '').trim();
-    const matchedLead = eventCaseId ? leadsById[eventCaseId] : null;
+    const matchedLead = eventCaseId ? leadsByCaseId[eventCaseId] : null;
     const matchedCase = !matchedLead && eventCaseId ? casesById[eventCaseId] : null;
     const recordStage = matchedLead ? 'Lead' : (matchedCase ? 'Case' : 'Unknown');
     const associatedClient = matchedCase
@@ -47,6 +47,25 @@ function buildFactScheduledEvents() {
 
   writeRowsToSheet_(CONFIG.sheets.factScheduledEvents, rows);
   formatFactScheduledEventsColumns_();
+}
+
+function indexLeadsByCaseId_(leads) {
+  const out = {};
+
+  leads.forEach(function(leadRow) {
+    const leadCaseId = String(
+      firstNonEmpty_(
+        leadRow.case_id,
+        safeGet_(parseJsonMaybe_(leadRow.case), 'id', ''),
+        leadRow.case
+      ) || ''
+    ).trim();
+
+    if (!leadCaseId) return;
+    out[leadCaseId] = leadRow;
+  });
+
+  return out;
 }
 
 function extractLeadDisplayName_(leadRow) {
