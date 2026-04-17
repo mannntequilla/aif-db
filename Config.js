@@ -24,6 +24,7 @@ const CONFIG = {
     factCaseMaster: 'fact_case_master',
     factCaseProfitability: 'fact_case_profitability',
     factConsultations: 'fact_consultations',
+    factScheduledEvents: 'fact_scheduled_events',
     dimDate: 'dim_date',
     taskReport: 'task_report',
     rawMyCaseLeadsReport: 'raw_mycase_leads_report',
