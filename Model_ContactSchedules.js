@@ -31,6 +31,8 @@ function buildFactContactSchedules() {
 
     const existingRow = rowsByCaseId[caseId];
     const contactName = String(firstNonEmpty_(eventRow.associated_contact_name, eventRow.record_name)).trim();
+    const eventType = String(firstNonEmpty_(eventRow.event_type)).trim();
+    const isRelevantEventType = isRelevantFactLeadEventType_(eventType);
     const candidateEventStart = toDateMaybe_(firstNonEmpty_(eventRow.event_start, eventRow.event_created_at));
     const currentEventStart = existingRow
       ? toDateMaybe_(firstNonEmpty_(existingRow.event_start))
@@ -42,9 +44,9 @@ function buildFactContactSchedules() {
         case_id: caseId,
         contact_name: contactName,
         contact_stage: firstNonEmpty_(eventRow.record_stage),
-        event_title: firstNonEmpty_(eventRow.event_title, 'No event found'),
-        event_start: toDateMaybe_(firstNonEmpty_(eventRow.event_start)),
-        event_type: firstNonEmpty_(eventRow.event_type)
+        event_title: isRelevantEventType ? firstNonEmpty_(eventRow.event_title, 'No event found') : 'No event found',
+        event_start: isRelevantEventType ? toDateMaybe_(firstNonEmpty_(eventRow.event_start)) : '',
+        event_type: isRelevantEventType ? eventType : ''
       };
       return;
     }
@@ -64,10 +66,10 @@ function buildFactContactSchedules() {
       ? currentEventStart.getTime()
       : Number.NEGATIVE_INFINITY;
 
-    if (candidateTime >= currentTime && firstNonEmpty_(eventRow.event_title, eventRow.event_type)) {
+    if (isRelevantEventType && candidateTime >= currentTime && firstNonEmpty_(eventRow.event_title, eventRow.event_type)) {
       rowsByCaseId[caseId].event_title = firstNonEmpty_(eventRow.event_title, 'No event found');
       rowsByCaseId[caseId].event_start = toDateMaybe_(firstNonEmpty_(eventRow.event_start));
-      rowsByCaseId[caseId].event_type = firstNonEmpty_(eventRow.event_type);
+      rowsByCaseId[caseId].event_type = eventType;
     }
   });
 
@@ -116,6 +118,13 @@ function resolveCaseContactCreatedAt_(caseId, casesById, clientsById) {
   const client = resolveClientFromRef_(clientRef, clientsById);
 
   return client ? toDateOnlyMaybe_(firstNonEmpty_(client.created_at)) : '';
+}
+
+function isRelevantFactLeadEventType_(eventType) {
+  const normalizedEventType = normalizeText_(eventType);
+
+  return normalizedEventType === normalizeText_('INITIAL CONSULTATION') ||
+    normalizedEventType === normalizeText_('DETAINEE VISITATION');
 }
 
 function formatFactContactSchedulesColumns_() {
