@@ -78,8 +78,8 @@ function fullRefreshCaseMaster() {
     Logger.log('2. Import latest MyCase leads report...');
     importLatestMyCaseLeadsReportFromDrive();
 
-    Logger.log('3. Build fact_leads...');
-    buildFactLeads();
+    Logger.log('3. Build dim_date...');
+    buildDimDate();
 
     Logger.log('4. Build fact_case_master...');
     buildFactCaseMaster();
@@ -123,8 +123,8 @@ function fullRefreshAll() {
     Logger.log('2. Import latest MyCase leads report...');
     importLatestMyCaseLeadsReportFromDrive();
 
-    Logger.log('3. Build fact_leads...');
-    buildFactLeads();
+    Logger.log('3. Build dim_date...');
+    buildDimDate();
 
     Logger.log('4. Build fact_case_master...');
     buildFactCaseMaster();
