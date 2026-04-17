@@ -18,6 +18,7 @@ function buildFactContactSchedules() {
       date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow.created_at)),
       case_id: caseId,
       contact_name: contactName,
+      contact_stage: 'Lead',
       event_title: 'No event found',
       event_start: '',
       event_type: ''
@@ -40,6 +41,7 @@ function buildFactContactSchedules() {
         date_added: resolveCaseContactCreatedAt_(caseId, casesById, clientsById),
         case_id: caseId,
         contact_name: contactName,
+        contact_stage: firstNonEmpty_(eventRow.record_stage),
         event_title: firstNonEmpty_(eventRow.event_title, 'No event found'),
         event_start: toDateMaybe_(firstNonEmpty_(eventRow.event_start)),
         event_type: firstNonEmpty_(eventRow.event_type)
@@ -49,6 +51,10 @@ function buildFactContactSchedules() {
 
     if (!rowsByCaseId[caseId].contact_name && contactName) {
       rowsByCaseId[caseId].contact_name = contactName;
+    }
+
+    if (!rowsByCaseId[caseId].contact_stage) {
+      rowsByCaseId[caseId].contact_stage = firstNonEmpty_(eventRow.record_stage);
     }
 
     const candidateTime = candidateEventStart && candidateEventStart.getTime
