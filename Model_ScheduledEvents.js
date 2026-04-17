@@ -28,9 +28,9 @@ function buildFactScheduledEvents() {
       case_id: eventCaseId,
       event_title: firstNonEmpty_(eventRow.name, eventRow.title, eventRow.subject),
       event_type: normalizeScheduledEventType_(firstNonEmpty_(eventRow.event_type, eventRow.type)),
-      event_start: toDateMaybe_(firstNonEmpty_(eventRow.start, eventRow.start_at, eventRow.start_time, eventRow.date)),
-      event_end: toDateMaybe_(firstNonEmpty_(eventRow.end, eventRow.end_at, eventRow.end_time)),
-      event_date: toDateOnlyMaybe_(firstNonEmpty_(eventRow.start, eventRow.start_at, eventRow.start_time, eventRow.date)),
+      event_start: toDateMaybe_(firstNonEmpty_(eventRow.start)),
+      event_end: toDateMaybe_(firstNonEmpty_(eventRow.end)),
+      dim_date: toDateOnlyMaybe_(firstNonEmpty_(eventRow.start)),
       record_stage: recordStage,
       record_name: matchedLead
         ? extractLeadDisplayName_(matchedLead)
@@ -96,7 +96,7 @@ function formatFactScheduledEventsColumns_() {
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
   [
-    'event_date',
+    'dim_date',
     'event_start',
     'event_end',
     'event_created_at',
@@ -104,7 +104,8 @@ function formatFactScheduledEventsColumns_() {
   ].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
-      sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+      const format = name === 'dim_date' ? 'yyyy-mm-dd' : 'yyyy-mm-dd hh:mm:ss';
+      sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat(format);
     }
   });
 }
