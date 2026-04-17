@@ -90,10 +90,13 @@ function fullRefreshCaseMaster() {
     Logger.log('6. Build fact_scheduled_events...');
     buildFactScheduledEvents();
 
-    Logger.log('7. Build fact_case_profitability...');
+    Logger.log('7. Build fact_contact_schedules...');
+    buildFactContactSchedules();
+
+    Logger.log('8. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('8. updateLastRefreshTimestamp_');
+    Logger.log('9. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshCaseMaster ===');
@@ -138,16 +141,19 @@ function fullRefreshAll() {
     Logger.log('6. Build fact_scheduled_events...');
     buildFactScheduledEvents();
 
-    Logger.log('7. Build fact_case_profitability...');
+    Logger.log('7. Build fact_contact_schedules...');
+    buildFactContactSchedules();
+
+    Logger.log('8. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('8. Build leads funnel...');
+    Logger.log('9. Build leads funnel...');
     buildLeadsFunnelByDate();
 
-    Logger.log('9. Build case staff table...');
+    Logger.log('10. Build case staff table...');
     buildCaseStaffTable();
 
-    Logger.log('10. updateLastRefreshTimestamp_');
+    Logger.log('11. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshAll ===');

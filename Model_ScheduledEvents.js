@@ -22,11 +22,6 @@ function buildFactScheduledEvents() {
     const associatedClient = matchedCase
       ? resolveClientFromRef_(findPreferredCaseClientRef_(matchedCase), clientsById) || {}
       : {};
-    const associatedContactCreatedAt = matchedLead
-      ? toDateOnlyMaybe_(firstNonEmpty_(matchedLead.created_at))
-      : matchedCase
-        ? toDateOnlyMaybe_(firstNonEmpty_(associatedClient.created_at))
-        : '';
 
     return {
       event_id: firstNonEmpty_(eventRow.id, eventRow.event_id),
@@ -45,7 +40,6 @@ function buildFactScheduledEvents() {
       associated_contact_name: matchedCase
         ? firstNonEmpty_(associatedClient.full_name, buildFullName_(associatedClient))
         : '',
-      associated_contact_created_at: associatedContactCreatedAt,
       event_created_at: toDateMaybe_(firstNonEmpty_(eventRow.created_at)),
       event_updated_at: toDateMaybe_(firstNonEmpty_(eventRow.updated_at))
     };
@@ -103,7 +97,6 @@ function formatFactScheduledEventsColumns_() {
 
   [
     'dim_date',
-    'associated_contact_created_at',
     'event_start',
     'event_end',
     'event_created_at',
@@ -111,10 +104,7 @@ function formatFactScheduledEventsColumns_() {
   ].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
-      const format =
-        name === 'dim_date' || name === 'associated_contact_created_at'
-          ? 'yyyy-mm-dd'
-          : 'yyyy-mm-dd hh:mm:ss';
+      const format = name === 'dim_date' ? 'yyyy-mm-dd' : 'yyyy-mm-dd hh:mm:ss';
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat(format);
     }
   });
