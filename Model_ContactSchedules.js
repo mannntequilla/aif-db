@@ -70,7 +70,11 @@ function extractRawLeadFullName_(leadRow) {
       leadRow.full_name,
       leadRow.name,
       leadRow.lead_name,
-      [firstNonEmpty_(leadRow.first_name), firstNonEmpty_(leadRow.last_name)].filter(Boolean).join(' ').trim()
+      [
+        firstNonEmpty_(leadRow['First Name'], leadRow.first_name),
+        firstNonEmpty_(leadRow['Middle Name'], leadRow.middle_name),
+        firstNonEmpty_(leadRow['Last Name'], leadRow.last_name)
+      ].filter(Boolean).join(' ').trim()
     )
   ).trim();
 }
