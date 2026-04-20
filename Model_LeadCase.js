@@ -22,7 +22,8 @@ function buildBridgeLeadCaseRowsFromLeads_(rawLeads) {
         Full_name: fullName,
         date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow.created_at)),
         Status: firstNonEmpty_(leadRow.status, leadRow.Status),
-        'lead/case': 'Lead'
+        'lead/case': 'Lead',
+        referral_source: firstNonEmpty_(leadRow.referral_source, leadRow['Referral source'])
       };
     })
     .filter(Boolean);
@@ -41,7 +42,8 @@ function buildBridgeLeadCaseRowsFromClientCases_(bridgeClientCases) {
         Full_name: fullName,
         date_added: toDateOnlyMaybe_(firstNonEmpty_(clientCaseRow.client_created_at)),
         Status: firstNonEmpty_(clientCaseRow.case_stage),
-        'lead/case': 'Case'
+        'lead/case': 'Case',
+        referral_source: ''
       };
     })
     .filter(Boolean);
