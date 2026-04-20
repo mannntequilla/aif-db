@@ -21,6 +21,7 @@ const CONFIG = {
     rawTasks: 'raw_tasks',
     rawStaff: 'raw_staff',
     rawCustomFields: 'raw_custom_fields',
+    bridgeClientCases: 'bridge_client_cases',
     factCaseMaster: 'fact_case_master',
     factCaseProfitability: 'fact_case_profitability',
     dimDate: 'dim_date',
