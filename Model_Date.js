@@ -25,7 +25,6 @@ function buildDimDate() {
 
   writeRowsToSheet_(CONFIG.sheets.dimDate, rows);
   formatDimDateColumns_();
-  clearLegacyFactLeads_();
 }
 
 function collectDatesFromRawCases_() {
@@ -97,15 +96,4 @@ function formatDimDateColumns_() {
       sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('0');
     }
   });
-}
-
-function clearLegacyFactLeads_() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('fact_leads');
-  if (!sheet) return;
-
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
-  if (lastRow > 0 && lastCol > 0) {
-    sheet.getRange(1, 1, lastRow, lastCol).clearContent();
-  }
 }
