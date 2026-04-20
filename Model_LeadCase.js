@@ -1,0 +1,68 @@
+function buildBridgeLeadCase() {
+  const rawLeads = readSheetAsObjectsIfExists_(CONFIG.sheets.rawLeads);
+  const bridgeClientCases = readSheetAsObjectsIfExists_(CONFIG.sheets.bridgeClientCases);
+  const rows = []
+    .concat(buildBridgeLeadCaseRowsFromLeads_(rawLeads))
+    .concat(buildBridgeLeadCaseRowsFromClientCases_(bridgeClientCases));
+
+  writeRowsToSheet_(CONFIG.sheets.bridgeLeadCase, rows);
+}
+
+function buildBridgeLeadCaseRowsFromLeads_(rawLeads) {
+  return rawLeads
+    .map(function(leadRow) {
+      const leadCaseId = extractLeadCaseIdForBridge_(leadRow);
+      const fullName = extractLeadFullNameForBridge_(leadRow);
+
+      if (!leadCaseId || !fullName) return null;
+
+      return {
+        id: leadCaseId,
+        Full_name: fullName,
+        'lead/case': 'Lead'
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildBridgeLeadCaseRowsFromClientCases_(bridgeClientCases) {
+  return bridgeClientCases
+    .map(function(clientCaseRow) {
+      const caseId = String(firstNonEmpty_(clientCaseRow.case_id)).trim();
+      const fullName = String(firstNonEmpty_(clientCaseRow.client_full_name)).trim();
+
+      if (!caseId || !fullName) return null;
+
+      return {
+        id: caseId,
+        Full_name: fullName,
+        'lead/case': 'Case'
+      };
+    })
+    .filter(Boolean);
+}
+
+function extractLeadCaseIdForBridge_(leadRow) {
+  return String(
+    firstNonEmpty_(
+      leadRow.case_id,
+      safeGet_(parseJsonMaybe_(leadRow.case), 'id', ''),
+      leadRow.case
+    ) || ''
+  ).trim();
+}
+
+function extractLeadFullNameForBridge_(leadRow) {
+  return String(
+    firstNonEmpty_(
+      leadRow.full_name,
+      leadRow.name,
+      leadRow.lead_name,
+      [
+        firstNonEmpty_(leadRow['First Name'], leadRow.first_name),
+        firstNonEmpty_(leadRow['Middle Name'], leadRow.middle_name),
+        firstNonEmpty_(leadRow['Last Name'], leadRow.last_name)
+      ].filter(Boolean).join(' ').trim()
+    )
+  ).trim();
+}
