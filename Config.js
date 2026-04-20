@@ -23,7 +23,7 @@ const CONFIG = {
     rawCustomFields: 'raw_custom_fields',
     bridgeClientCases: 'bridge_client_cases',
     bridgeLeadCase: 'bridge_lead_case',
-    consultationEvents: 'Consultation Events',
+    eventsPerCaseId: 'EventsPerCaseId',
     factCaseMaster: 'fact_case_master',
     factCaseProfitability: 'fact_case_profitability',
     dimDate: 'dim_date',

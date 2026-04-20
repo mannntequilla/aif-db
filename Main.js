@@ -90,8 +90,8 @@ function fullRefreshCaseMaster() {
     Logger.log('6. Build bridge_lead_case...');
     buildBridgeLeadCase();
 
-    Logger.log('7. Build Consultation Events...');
-    buildConsultationEvents();
+    Logger.log('7. Build EventsPerCaseId...');
+    buildEventsPerCaseId();
 
     Logger.log('8. Build fact_case_profitability...');
     buildFactCaseProfitability();
@@ -141,8 +141,8 @@ function fullRefreshAll() {
     Logger.log('6. Build bridge_lead_case...');
     buildBridgeLeadCase();
 
-    Logger.log('7. Build Consultation Events...');
-    buildConsultationEvents();
+    Logger.log('7. Build EventsPerCaseId...');
+    buildEventsPerCaseId();
 
     Logger.log('8. Build fact_case_profitability...');
     buildFactCaseProfitability();
