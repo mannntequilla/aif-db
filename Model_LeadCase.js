@@ -20,7 +20,7 @@ function buildBridgeLeadCaseRowsFromLeads_(rawLeads) {
       return {
         id: leadCaseId,
         Full_name: fullName,
-        date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow.created_at, leadRow.date_added)),
+        date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow.created_at)),
         'lead/case': 'Lead'
       };
     })
