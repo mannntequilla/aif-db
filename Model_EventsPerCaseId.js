@@ -16,6 +16,7 @@ function buildEventsPerCaseId() {
         date_added: cleanScalar_(firstNonEmpty_(bridgeRow.date_added)),
         stage: firstNonEmpty_(bridgeRow.Status),
         'lead/case': firstNonEmpty_(bridgeRow['lead/case']),
+        referral_source: firstNonEmpty_(bridgeRow.referral_source),
         event_title: 'No events were scheduled',
         event_type: 'No events were scheduled',
         start: 'No events were scheduled'
@@ -30,6 +31,7 @@ function buildEventsPerCaseId() {
         date_added: cleanScalar_(firstNonEmpty_(bridgeRow.date_added)),
         stage: firstNonEmpty_(bridgeRow.Status),
         'lead/case': firstNonEmpty_(bridgeRow['lead/case']),
+        referral_source: firstNonEmpty_(bridgeRow.referral_source),
         event_title: cleanScalar_(firstNonEmpty_(eventRow.name, eventRow.title, eventRow.subject)),
         event_type: normalizeScheduledEventType_(firstNonEmpty_(eventRow.event_type, eventRow.type)),
         start: cleanScalar_(firstNonEmpty_(eventRow.start))
