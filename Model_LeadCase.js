@@ -21,6 +21,7 @@ function buildBridgeLeadCaseRowsFromLeads_(rawLeads) {
         id: leadCaseId,
         Full_name: fullName,
         date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow.created_at)),
+        Status: firstNonEmpty_(leadRow.status, leadRow.Status),
         'lead/case': 'Lead'
       };
     })
@@ -39,6 +40,7 @@ function buildBridgeLeadCaseRowsFromClientCases_(bridgeClientCases) {
         id: caseId,
         Full_name: fullName,
         date_added: toDateOnlyMaybe_(firstNonEmpty_(clientCaseRow.client_created_at)),
+        Status: firstNonEmpty_(clientCaseRow.case_stage),
         'lead/case': 'Case'
       };
     })

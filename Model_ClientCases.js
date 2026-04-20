@@ -23,7 +23,7 @@ function buildBridgeClientCases() {
         client_created_at: toDateOnlyMaybe_(firstNonEmpty_(clientRow.created_at)),
         case_id: caseId,
         case_name: firstNonEmpty_(caseRow.name, caseRow.case_name),
-        case_status: firstNonEmpty_(caseRow.status, caseRow.case_status),
+        case_stage: firstNonEmpty_(caseRow.case_stage, caseRow.stage),
         case_opened_date: toDateOnlyMaybe_(firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date))
       });
     });
