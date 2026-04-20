@@ -238,15 +238,6 @@ function getConsultationFeeByEventType_(eventType) {
   return 0;
 }
 
-function normalizeText_(value) {
-  return String(value || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function normalizePhone_(value) {
   const digits = String(value || '').replace(/\D+/g, '');
   if (!digits) return '';
