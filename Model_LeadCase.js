@@ -48,7 +48,7 @@ function buildBridgeLeadCaseRowsFromClientCases_(bridgeClientCases) {
         Status: firstNonEmpty_(clientCaseRow.case_stage),
         'lead/case': 'Case',
         case_name: firstNonEmpty_(clientCaseRow.case_name),
-        referral_source: ''
+        referral_source: firstNonEmpty_(clientCaseRow.referral_source)
       };
     })
     .filter(Boolean);

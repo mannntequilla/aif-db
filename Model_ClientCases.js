@@ -1,7 +1,9 @@
 function buildBridgeClientCases() {
   const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
   const clients = readSheetAsObjectsIfExists_(CONFIG.sheets.rawClients);
+  const caseMasterRows = readSheetAsObjectsIfExists_(CONFIG.sheets.factCaseMaster);
   const casesById = indexBy_(cases, 'id');
+  const caseMasterByCaseId = indexBy_(caseMasterRows, 'case_id');
   const rows = [];
 
   clients.forEach(function(clientRow) {
@@ -16,6 +18,7 @@ function buildBridgeClientCases() {
       if (!caseId) return;
 
       const caseRow = casesById[caseId] || {};
+      const caseMasterRow = caseMasterByCaseId[caseId] || {};
 
       rows.push({
         client_id: clientId,
@@ -24,6 +27,7 @@ function buildBridgeClientCases() {
         case_id: caseId,
         case_name: firstNonEmpty_(caseRow.name, caseRow.case_name),
         case_stage: firstNonEmpty_(caseRow.case_stage, caseRow.stage),
+        referral_source: firstNonEmpty_(caseMasterRow.lead_referral_source),
         case_opened_date: toDateOnlyMaybe_(firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date))
       });
     });
