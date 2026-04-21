@@ -151,7 +151,7 @@ function getFirstInitialConsultationByCaseId_(events) {
 }
 
 function formatFactCaseMasterDateColumns_() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet()
+  const sheet = getSpreadsheet_()
     .getSheetByName(CONFIG.sheets.factCaseMaster);
 
   if (!sheet) return;

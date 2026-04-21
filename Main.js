@@ -169,9 +169,7 @@ function refreshMyCaseLeadsReport(){
 }
 
 function updateLastRefreshTimestamp_() {
-  const sheet = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName('Menu');
+  const sheet = getSpreadsheet_().getSheetByName('Menu');
 
   if (!sheet) return;
 

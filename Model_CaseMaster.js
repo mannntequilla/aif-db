@@ -245,7 +245,7 @@ function normalizePhone_(value) {
 }
 
 function formatFactCaseMasterColumns_() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.factCaseMaster);
+  const sheet = getSpreadsheet_().getSheetByName(CONFIG.sheets.factCaseMaster);
   if (!sheet) return;
 
   const lastRow = sheet.getLastRow();

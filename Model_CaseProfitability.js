@@ -199,7 +199,7 @@ function buildFactCaseProfitability() {
 }
 
 function formatFactCaseProfitabilityColumns_() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.factCaseProfitability);
+  const sheet = getSpreadsheet_().getSheetByName(CONFIG.sheets.factCaseProfitability);
   if (!sheet) return;
 
   const lastRow = sheet.getLastRow();

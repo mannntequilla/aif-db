@@ -40,7 +40,7 @@ function debugLeadClientUuidOverlap() {
 function debugHeadersRawMyCaseLeadsReport() {
   const sheetName = CONFIG.sheets.rawMyCaseLeadsReport;
 
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   const sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
@@ -59,7 +59,7 @@ function debugHeadersRawMyCaseLeadsReport() {
 }
 
 function getAllSpreadsheetHeaders() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   const sheets = ss.getSheets();
 
   const result = sheets.map(function(sheet) {

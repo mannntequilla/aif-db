@@ -34,7 +34,7 @@ function buildBridgeClientCases() {
 }
 
 function formatBridgeClientCasesColumns_() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.bridgeClientCases);
+  const sheet = getSpreadsheet_().getSheetByName(CONFIG.sheets.bridgeClientCases);
   if (!sheet) return;
 
   const lastRow = sheet.getLastRow();

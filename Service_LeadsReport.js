@@ -24,7 +24,7 @@ function importLatestMyCaseLeadsReportFromDrive() {
   const csvText = latestFile.getBlob().getDataAsString();
   const rows = Utilities.parseCsv(csvText);
 
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   const sheetName = CONFIG.sheets.rawMyCaseLeadsReport;
   if (!sheetName) {
     throw new Error('CONFIG.sheets.rawMyCaseLeadsReport no esta definido.');

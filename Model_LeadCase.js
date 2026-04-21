@@ -75,7 +75,7 @@ function extractLeadFullNameForBridge_(leadRow) {
 }
 
 function formatBridgeLeadCaseColumns_() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.bridgeLeadCase);
+  const sheet = getSpreadsheet_().getSheetByName(CONFIG.sheets.bridgeLeadCase);
   if (!sheet) return;
 
   const lastRow = sheet.getLastRow();

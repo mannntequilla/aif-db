@@ -1,5 +1,7 @@
 function getSpreadsheet_() {
-  return SpreadsheetApp.getActiveSpreadsheet();
+  return CONFIG.spreadsheetId
+    ? SpreadsheetApp.openById(CONFIG.spreadsheetId)
+    : SpreadsheetApp.getActiveSpreadsheet();
 }
 
 function getOrCreateSheet_(name) {
@@ -20,7 +22,7 @@ function clearSheet_(sheetName) {
 }
 
 function readSheetAsObjectsIfExists_(sheetName) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   const sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) return [];
@@ -40,7 +42,7 @@ function readSheetAsObjectsIfExists_(sheetName) {
 }
 
 function ensureSheetExists_(sheetName) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   return ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
 }
 
@@ -78,7 +80,7 @@ function writeRowsToSheet_(sheetName, rows) {
 }
 
 function readSheetAsObjects_(sheetName) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   const sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {

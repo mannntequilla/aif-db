@@ -61,7 +61,7 @@ function indexEventsByCaseId_(rawEvents) {
 }
 
 function formatEventsPerCaseIdColumns_() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.eventsPerCaseId);
+  const sheet = getSpreadsheet_().getSheetByName(CONFIG.sheets.eventsPerCaseId);
   if (!sheet) return;
 
   const lastRow = sheet.getLastRow();

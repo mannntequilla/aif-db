@@ -2,6 +2,8 @@ const MYCASE_AUTH_URL = 'https://auth.mycase.com/login_sessions/new';
 const MYCASE_TOKEN_URL = 'https://auth.mycase.com/tokens';
 
 const CONFIG = {
+  spreadsheetId: '1ehZnelUr8i8QlmET4PwvYZNv5asmm_KTrMCPZbidPfE',
+
   api: {
     baseUrl: 'https://external-integrations.mycase.com/v1',
     pageSize: 100,

@@ -74,7 +74,7 @@ function buildDimDateRow_(dateValue) {
 }
 
 function formatDimDateColumns_() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.dimDate);
+  const sheet = getSpreadsheet_().getSheetByName(CONFIG.sheets.dimDate);
   if (!sheet) return;
 
   const lastRow = sheet.getLastRow();
