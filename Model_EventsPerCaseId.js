@@ -12,7 +12,7 @@ function buildEventsPerCaseId() {
 
     if (!matchedEvents.length) {
       rows.push({
-        'case/lead id': firstNonEmpty_(bridgeRow.id),
+        id: firstNonEmpty_(bridgeRow.id),
         Full_name: firstNonEmpty_(bridgeRow.Full_name),
         date_added: cleanScalar_(firstNonEmpty_(bridgeRow.date_added)),
         stage: firstNonEmpty_(bridgeRow.Status),
@@ -29,7 +29,7 @@ function buildEventsPerCaseId() {
 
     matchedEvents.forEach(function(eventRow) {
       rows.push({
-        'case/lead id': firstNonEmpty_(bridgeRow.id),
+        id: firstNonEmpty_(bridgeRow.id),
         Full_name: firstNonEmpty_(bridgeRow.Full_name),
         date_added: cleanScalar_(firstNonEmpty_(bridgeRow.date_added)),
         stage: firstNonEmpty_(bridgeRow.Status),
