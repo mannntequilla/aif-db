@@ -1,19 +1,22 @@
 function buildBridgeLeadCase() {
   const rawLeads = readSheetAsObjectsIfExists_(CONFIG.sheets.rawLeads);
+  const rawCases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
   const bridgeClientCases = readSheetAsObjectsIfExists_(CONFIG.sheets.bridgeClientCases);
+  const rawCasesById = indexBy_(rawCases, 'id');
   const rows = []
-    .concat(buildBridgeLeadCaseRowsFromLeads_(rawLeads))
+    .concat(buildBridgeLeadCaseRowsFromLeads_(rawLeads, rawCasesById))
     .concat(buildBridgeLeadCaseRowsFromClientCases_(bridgeClientCases));
 
   writeRowsToSheet_(CONFIG.sheets.bridgeLeadCase, rows);
   formatBridgeLeadCaseColumns_();
 }
 
-function buildBridgeLeadCaseRowsFromLeads_(rawLeads) {
+function buildBridgeLeadCaseRowsFromLeads_(rawLeads, rawCasesById) {
   return rawLeads
     .map(function(leadRow) {
       const leadCaseId = extractLeadCaseIdForBridge_(leadRow);
       const fullName = extractLeadFullNameForBridge_(leadRow);
+      const matchedCase = rawCasesById[leadCaseId] || {};
 
       if (!leadCaseId || !fullName) return null;
 
@@ -23,6 +26,7 @@ function buildBridgeLeadCaseRowsFromLeads_(rawLeads) {
         date_added: toDateOnlyMaybe_(firstNonEmpty_(leadRow.created_at)),
         Status: firstNonEmpty_(leadRow.status, leadRow.Status),
         'lead/case': 'Lead',
+        case_name: firstNonEmpty_(matchedCase.name, matchedCase.case_name),
         referral_source: firstNonEmpty_(leadRow.referral_source, leadRow['Referral source'])
       };
     })
@@ -43,6 +47,7 @@ function buildBridgeLeadCaseRowsFromClientCases_(bridgeClientCases) {
         date_added: toDateOnlyMaybe_(firstNonEmpty_(clientCaseRow.client_created_at)),
         Status: firstNonEmpty_(clientCaseRow.case_stage),
         'lead/case': 'Case',
+        case_name: firstNonEmpty_(clientCaseRow.case_name),
         referral_source: ''
       };
     })
