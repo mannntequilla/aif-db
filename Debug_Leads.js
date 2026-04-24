@@ -245,10 +245,11 @@ function resolveCaseCustomFieldDisplayValue_(caseRow, customFieldRow) {
 }
 
 function resolveCustomFieldSingleValue_(value, optionLabelById) {
+  const isObjectValue = value && typeof value === 'object';
   const optionId = String(
     firstNonEmpty_(
-      safeGet_(value, 'id', ''),
-      safeGet_(value, 'value', ''),
+      isObjectValue ? safeGet_(value, 'id', '') : '',
+      isObjectValue ? safeGet_(value, 'value', '') : '',
       value
     )
   ).trim();
