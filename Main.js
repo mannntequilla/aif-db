@@ -12,10 +12,10 @@ function resetAutoRefreshTrigger() {
     }
   });
 
-  // crea uno nuevo (cada 1 hora)
+  // crea uno nuevo (1 vez al dia)
   ScriptApp.newTrigger('runFullRefreshCaseMaster')
     .timeBased()
-    .everyMinutes(15)
+    .everyDays(1)
     .create();
 
   Logger.log('Trigger configurado correctamente.');

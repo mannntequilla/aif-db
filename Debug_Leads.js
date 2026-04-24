@@ -175,3 +175,181 @@ function profileExpensesRaw_() {
 
   writeRowsToSheet_('debug_expenses_profile', output);
 }
+
+function debugCaseCoreFieldsTable() {
+  const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
+  const customFields = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCustomFields);
+  const roles = readSheetAsObjectsIfExists_(CONFIG.sheets.rawRoles);
+  const staff = readSheetAsObjectsIfExists_(CONFIG.sheets.rawStaff);
+  const staffById = indexBy_(staff, 'id');
+  const leadAttorneyByCaseId = buildLeadAttorneyByCaseId_(roles, staffById);
+  const caseTypeField = findCustomFieldByName_(customFields, 'Case Type', 'case');
+  const alienNumberField = findCustomFieldByName_(customFields, 'Alien Number', 'case');
+
+  const rows = cases.map(function(caseRow) {
+    const caseId = String(firstNonEmpty_(caseRow.id, caseRow.case_id)).trim();
+
+    return {
+      case_id: caseId,
+      case_name: firstNonEmpty_(caseRow.name, caseRow.case_name),
+      open_date: toDateOnlyMaybe_(firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date)),
+      close_date: toDateOnlyMaybe_(firstNonEmpty_(caseRow.closed_date, caseRow.close_date, caseRow.closed_at, caseRow.close_at)),
+      stage: firstNonEmpty_(caseRow.case_stage, caseRow.stage),
+      case_type: resolveCaseCustomFieldDisplayValue_(caseRow, caseTypeField),
+      alien_number: resolveCaseCustomFieldDisplayValue_(caseRow, alienNumberField),
+      lead_attorney: firstNonEmpty_(leadAttorneyByCaseId[caseId], '')
+    };
+  });
+
+  writeRowsToSheet_('debug_case_core_fields', rows);
+  formatDebugCaseCoreFieldsColumns_();
+}
+
+function findCustomFieldByName_(customFields, fieldName, parentType) {
+  if (!customFields || !customFields.length) return null;
+
+  const normalizedFieldName = normalizeText_(fieldName);
+  const normalizedParentType = normalizeText_(parentType || '');
+
+  return customFields.find(function(customField) {
+    const currentName = normalizeText_(customField.name);
+    const currentParentType = normalizeText_(customField.parent_type);
+
+    if (currentName !== normalizedFieldName) return false;
+    if (normalizedParentType && currentParentType !== normalizedParentType) return false;
+
+    return true;
+  }) || null;
+}
+
+function resolveCaseCustomFieldDisplayValue_(caseRow, customFieldRow) {
+  if (!customFieldRow) return '';
+
+  const rawValue = getCaseCustomFieldValueById_(caseRow, firstNonEmpty_(customFieldRow.id));
+  if (rawValue === '' || rawValue === null || rawValue === undefined) return '';
+
+  const optionLabelById = buildCustomFieldOptionLabelById_(customFieldRow);
+  const parsedValue = parseJsonMaybe_(rawValue);
+
+  if (Array.isArray(parsedValue)) {
+    return parsedValue.map(function(item) {
+      return resolveCustomFieldSingleValue_(item, optionLabelById);
+    }).filter(Boolean).join(', ');
+  }
+
+  if (parsedValue && typeof parsedValue === 'object') {
+    return resolveCustomFieldSingleValue_(parsedValue, optionLabelById);
+  }
+
+  return resolveCustomFieldSingleValue_(rawValue, optionLabelById);
+}
+
+function resolveCustomFieldSingleValue_(value, optionLabelById) {
+  const optionId = String(
+    firstNonEmpty_(
+      safeGet_(value, 'id', ''),
+      safeGet_(value, 'value', ''),
+      value
+    )
+  ).trim();
+
+  if (!optionId) return '';
+  return firstNonEmpty_(optionLabelById[optionId], optionId);
+}
+
+function buildCustomFieldOptionLabelById_(customFieldRow) {
+  const out = {};
+  const options = firstNonEmpty_(
+    parseJsonMaybe_(customFieldRow.options),
+    parseJsonMaybe_(customFieldRow.values),
+    parseJsonMaybe_(customFieldRow.choices),
+    []
+  );
+
+  if (!Array.isArray(options)) return out;
+
+  options.forEach(function(optionRow) {
+    const optionId = String(firstNonEmpty_(optionRow.id, optionRow.value)).trim();
+    const optionLabel = String(firstNonEmpty_(optionRow.name, optionRow.label, optionRow.value)).trim();
+
+    if (!optionId) return;
+    out[optionId] = optionLabel;
+  });
+
+  return out;
+}
+
+function buildLeadAttorneyByCaseId_(roles, staffById) {
+  const out = {};
+
+  roles.forEach(function(roleRow) {
+    const roleBlob = JSON.stringify(roleRow || {}).toLowerCase();
+    if (roleBlob.indexOf('lead attorney') === -1) return;
+
+    const caseId = String(
+      firstNonEmpty_(
+        roleRow.case_id,
+        safeGet_(parseJsonMaybe_(roleRow.case), 'id', '')
+      )
+    ).trim();
+    if (!caseId || out[caseId]) return;
+
+    out[caseId] = firstNonEmpty_(
+      resolveRoleStaffName_(roleRow, staffById),
+      String(firstNonEmpty_(roleRow.name, roleRow.title)).trim()
+    );
+  });
+
+  return out;
+}
+
+function resolveRoleStaffName_(roleRow, staffById) {
+  const possibleRefs = [
+    roleRow.staff,
+    roleRow.user,
+    roleRow.person,
+    roleRow.assignee,
+    roleRow.member
+  ];
+
+  for (var i = 0; i < possibleRefs.length; i++) {
+    const parsedRef = parseJsonMaybe_(possibleRefs[i]) || possibleRefs[i];
+    const staffId = String(firstNonEmpty_(safeGet_(parsedRef, 'id', ''))).trim();
+
+    if (staffId && staffById[staffId]) {
+      return [staffById[staffId].first_name, staffById[staffId].last_name].filter(Boolean).join(' ');
+    }
+
+    const directName = String(
+      firstNonEmpty_(
+        safeGet_(parsedRef, 'full_name', ''),
+        [
+          safeGet_(parsedRef, 'first_name', ''),
+          safeGet_(parsedRef, 'last_name', '')
+        ].filter(Boolean).join(' ')
+      )
+    ).trim();
+
+    if (directName) return directName;
+  }
+
+  return '';
+}
+
+function formatDebugCaseCoreFieldsColumns_() {
+  const sheet = getSpreadsheet_().getSheetByName('debug_case_core_fields');
+  if (!sheet) return;
+
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return;
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  ['open_date', 'close_date'].forEach(function(name) {
+    const col = headers.indexOf(name) + 1;
+    if (col > 0) {
+      sheet.getRange(2, col, lastRow - 1, 1).setNumberFormat('yyyy-mm-dd');
+    }
+  });
+}
