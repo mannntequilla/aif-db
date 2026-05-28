@@ -41,3 +41,7 @@ function syncStaff() {
 function syncCustomFields() {
   return syncResourceByKey_('customFields');
 }
+
+function syncReferralSources() {
+  return syncResourceByKey_('referralSources');
+}

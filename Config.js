@@ -23,6 +23,7 @@ const CONFIG = {
     rawTasks: 'raw_tasks',
     rawStaff: 'raw_staff',
     rawCustomFields: 'raw_custom_fields',
+    rawReferralSources: 'raw_referral_sources',
     bridgeClientCases: 'bridge_client_cases',
     bridgeLeadCase: 'bridge_lead_case',
     eventsPerCaseId: 'EventsPerCaseId',
@@ -45,5 +46,6 @@ const CONFIG = {
     roles: '/case_roles',
     staff: '/staff',
     customFields: '/custom_fields',
+    referralSources: '/referral_sources',
   }
 };

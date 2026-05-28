@@ -38,7 +38,8 @@ function syncAllRaw() {
     'calls',
     'tasks',
     'staff',
-    'customFields'
+    'customFields',
+    'referralSources'
   ]);
 }
 

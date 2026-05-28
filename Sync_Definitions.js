@@ -56,6 +56,11 @@ function getSyncDefinitions_() {
       endpoint: CONFIG.endpoints.customFields,
       sheetName: CONFIG.sheets.rawCustomFields,
       transform: passthroughSyncRows_
+    },
+    referralSources: {
+      endpoint: CONFIG.endpoints.referralSources,
+      sheetName: CONFIG.sheets.rawReferralSources,
+      transform: passthroughSyncRows_
     }
   };
 }
