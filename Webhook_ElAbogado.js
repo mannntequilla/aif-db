@@ -75,20 +75,37 @@ function buildMyCaseLeadPayloadFromElAbogado_(leadPayload) {
     throw new Error('Missing lead name.');
   }
 
-  return {
+  const referralSourceReferenceId = String(
+    firstNonEmpty_(
+      PropertiesService.getScriptProperties().getProperty('ELABOGADO_REFERRAL_SOURCE_ID')
+    )
+  ).trim();
+
+  const myCasePayload = {
     first_name: leadPayload.first_name,
     last_name: leadPayload.last_name,
     email: leadPayload.email,
-    phone_number: leadPayload.phone,
-    referral_source: leadPayload.referral_source,
-    practice_area: leadPayload.practice_area,
-    notes: buildElAbogadoLeadNotes_(leadPayload)
+    cell_phone_number: leadPayload.phone,
+    lead_details: buildElAbogadoLeadDetails_(leadPayload)
   };
+
+  if (leadPayload.referral_source) {
+    myCasePayload.referral_source = leadPayload.referral_source;
+  }
+
+  if (referralSourceReferenceId) {
+    myCasePayload.referral_source_reference = {
+      id: Number(referralSourceReferenceId)
+    };
+  }
+
+  return myCasePayload;
 }
 
-function buildElAbogadoLeadNotes_(leadPayload) {
+function buildElAbogadoLeadDetails_(leadPayload) {
   const noteParts = [
     'Source: elAbogado.com',
+    leadPayload.practice_area ? 'Practice area: ' + leadPayload.practice_area : '',
     leadPayload.notes ? 'Message: ' + leadPayload.notes : '',
     'Raw payload: ' + JSON.stringify(leadPayload.raw_payload || {})
   ].filter(Boolean);
