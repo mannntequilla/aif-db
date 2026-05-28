@@ -8,9 +8,13 @@ function doPost(e) {
 
 function handleProxyRequest_(e, method) {
   try {
-    validateProxyRequest_(e);
-
     const action = getProxyAction_(e);
+
+    if (action === 'elabogadoWebhook') {
+      return jsonOk_(handleElAbogadoWebhook_(e));
+    }
+
+    validateProxyRequest_(e);
 
     if (action === 'health') {
       return jsonOk_(handleHealth_());

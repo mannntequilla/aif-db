@@ -28,6 +28,39 @@ function myCaseGetFullResponse_(endpoint, params = {}) {
   return response;
 }
 
+function myCasePost_(endpoint, payload) {
+  const token = getAccessToken_();
+  const url = CONFIG.api.baseUrl + endpoint;
+
+  const options = {
+    method: 'post',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      Accept: 'application/json'
+    },
+    contentType: 'application/json',
+    payload: JSON.stringify(payload || {}),
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(url, options);
+  const code = response.getResponseCode();
+  const bodyText = response.getContentText();
+
+  if (code >= 400) {
+    throw new Error('MyCase API error ' + code + ': ' + bodyText);
+  }
+
+  try {
+    return JSON.parse(bodyText);
+  } catch (error) {
+    return {
+      raw: bodyText,
+      status: code
+    };
+  }
+}
+
 function apiGetAllPages_(endpoint, params = {}) {
   let allData = [];
   let pageToken = null;
