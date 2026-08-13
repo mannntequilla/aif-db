@@ -64,6 +64,11 @@ function normalizeElAbogadoWebhookPayload_(payload) {
     email: String(firstNonEmpty_(payload.email, payload.email_address)).trim(),
     phone: String(firstNonEmpty_(payload.phone, payload.phone_number, payload.mobile)).trim(),
     notes: String(firstNonEmpty_(payload.notes, payload.message, payload.description)).trim(),
+    text: String(firstNonEmpty_(payload.text)).trim(),
+    questions: payload.questions || {},
+    location: String(firstNonEmpty_(payload.location)).trim(),
+    specialty: String(firstNonEmpty_(payload.speciality, payload.specialty)).trim(),
+    cost: String(firstNonEmpty_(payload.cost)).trim(),
     referral_source: String(firstNonEmpty_(payload.referral_source, 'ElAbogado.com')).trim(),
     practice_area: String(firstNonEmpty_(payload.practice_area, payload.case_type, payload.matter_type)).trim(),
     raw_payload: payload
@@ -75,42 +80,44 @@ function buildMyCaseLeadPayloadFromElAbogado_(leadPayload) {
     throw new Error('Missing lead name.');
   }
 
-  const referralSourceReferenceId = String(
-    firstNonEmpty_(
-      PropertiesService.getScriptProperties().getProperty('ELABOGADO_REFERRAL_SOURCE_ID')
-    )
-  ).trim();
-
   const myCasePayload = {
     first_name: leadPayload.first_name,
     last_name: leadPayload.last_name,
     email: leadPayload.email,
     cell_phone_number: leadPayload.phone,
-    lead_details: buildElAbogadoLeadDetails_(leadPayload)
+    lead_details: buildElAbogadoLeadDetails_(leadPayload),
+    referral_source_reference: {
+      id: 5020308
+    }
   };
-
-  if (leadPayload.referral_source) {
-    myCasePayload.referral_source = leadPayload.referral_source;
-  }
-
-  if (referralSourceReferenceId) {
-    myCasePayload.referral_source_reference = {
-      id: Number(referralSourceReferenceId)
-    };
-  }
 
   return myCasePayload;
 }
 
 function buildElAbogadoLeadDetails_(leadPayload) {
+  const questionLines = formatElAbogadoQuestions_(leadPayload.questions);
   const noteParts = [
     'Source: elAbogado.com',
+    leadPayload.specialty ? 'Specialty: ' + leadPayload.specialty : '',
+    leadPayload.location ? 'Location: ' + leadPayload.location : '',
+    leadPayload.cost ? 'Cost: ' + leadPayload.cost : '',
     leadPayload.practice_area ? 'Practice area: ' + leadPayload.practice_area : '',
-    leadPayload.notes ? 'Message: ' + leadPayload.notes : '',
-    'Raw payload: ' + JSON.stringify(leadPayload.raw_payload || {})
+    leadPayload.text ? 'Text: ' + leadPayload.text : '',
+    questionLines ? 'Questions:\n' + questionLines : '',
+    leadPayload.notes ? 'Message: ' + leadPayload.notes : ''
   ].filter(Boolean);
 
   return noteParts.join('\n');
+}
+
+function formatElAbogadoQuestions_(questions) {
+  if (!questions || typeof questions !== 'object' || Array.isArray(questions)) {
+    return '';
+  }
+
+  return Object.keys(questions).map(function(questionKey) {
+    return questionKey + ': ' + firstNonEmpty_(questions[questionKey]);
+  }).filter(Boolean).join('\n');
 }
 
 function extractFirstNameFromFullName_(fullName) {

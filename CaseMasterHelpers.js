@@ -106,8 +106,7 @@ function getFirstInitialConsultationByCaseId_(events) {
   const out = {};
 
   events.forEach(function(ev) {
-    const caseObj = parseJsonMaybe_(ev.case);
-    const caseId = caseObj && caseObj.id ? String(caseObj.id) : '';
+    const caseId = String(firstNonEmpty_(extractCaseIdFromEvent_(ev))).trim();
     if (!caseId) return;
 
     const rawEventType = firstNonEmpty_(ev.event_type);
@@ -125,26 +124,26 @@ function getFirstInitialConsultationByCaseId_(events) {
     const currentDate = new Date(String(startValue).replace(/^"+|"+$/g, ''));
     if (isNaN(currentDate.getTime())) return;
 
-    if (!out[caseId]) {
-      out[caseId] = {
-        first_initial_consultation_date: toDateOnlyMaybe_(startValue),
-        first_initial_consultation_title: firstNonEmpty_(ev.name),
-        first_initial_consultation_event_type: rawEventType || ''
-      };
-      return;
+      if (!out[caseId]) {
+        out[caseId] = {
+          first_initial_consultation_date: toDateOnlyMaybe_(startValue),
+          first_initial_consultation_title: firstNonEmpty_(ev.name, ev.title, ev.subject),
+          first_initial_consultation_event_type: rawEventType || ''
+        };
+        return;
     }
 
     const existingDate = new Date(
       String(out[caseId].first_initial_consultation_date).replace(/^"+|"+$/g, '')
     );
 
-    if (isNaN(existingDate.getTime()) || currentDate < existingDate) {
-      out[caseId] = {
-        first_initial_consultation_date: toDateOnlyMaybe_(startValue),
-        first_initial_consultation_title: firstNonEmpty_(ev.name),
-        first_initial_consultation_event_type: rawEventType || ''
-      };
-    }
+      if (isNaN(existingDate.getTime()) || currentDate < existingDate) {
+        out[caseId] = {
+          first_initial_consultation_date: toDateOnlyMaybe_(startValue),
+          first_initial_consultation_title: firstNonEmpty_(ev.name, ev.title, ev.subject),
+          first_initial_consultation_event_type: rawEventType || ''
+        };
+      }
   });
 
   return out;
