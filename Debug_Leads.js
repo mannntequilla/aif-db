@@ -123,7 +123,7 @@ function debugConvertedLeadClassification() {
 
       output.push({
         row_number: index + 2,
-        lead_name: firstNonEmpty_(row['Lead name']),
+        lead_name: firstNonEmpty_(row['Lead'], row['Lead name']),
         lead_id: firstNonEmpty_(row['Lead ID']) || firstNonEmpty_(row['Id']) || '',
         raw_status: rawStatus,
         normalized_status: normalizedStatus,

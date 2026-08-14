@@ -51,6 +51,9 @@ function buildFactCaseMaster() {
       case_opened_date: toDateOnlyMaybe_(
         firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date)
       ),
+      case_created_at: toDateOnlyMaybe_(
+        firstNonEmpty_(caseRow.created_at, caseRow.case_created_at)
+      ),
       case_updated_at: toDateOnlyMaybe_(
         firstNonEmpty_(caseRow.updated_at, caseRow.case_updated_at)
       ),
@@ -110,7 +113,10 @@ function buildFactCaseMaster() {
       lead_referred_by: firstNonEmpty_(leadMatch.referred_by),
       lead_value: firstNonEmpty_(leadMatch.value),
       lead_match_method: firstNonEmpty_(leadMatch.match_method),
-      lead_match_score: firstNonEmpty_(leadMatch.match_score)
+      lead_match_score: firstNonEmpty_(leadMatch.match_score),
+      lead_match_confidence: firstNonEmpty_(leadMatch.match_confidence),
+      lead_match_status: firstNonEmpty_(leadMatch.match_status, 'unmatched'),
+      lead_match_candidate_count: firstNonEmpty_(leadMatch.match_candidate_count, 0)
     };
   });
 
@@ -123,6 +129,8 @@ function buildLeadMatches_(cases, mycaseLeadsReport, clientsById) {
 
   if (!mycaseLeadsReport || !mycaseLeadsReport.length) return out;
 
+  const candidates = [];
+
   cases.forEach(function(caseRow) {
     const caseId = String(firstNonEmpty_(caseRow.id, caseRow.case_id) || '');
     if (!caseId) return;
@@ -130,9 +138,7 @@ function buildLeadMatches_(cases, mycaseLeadsReport, clientsById) {
     const linkedClientRef = findPreferredCaseClientRef_(caseRow);
     const linkedClient = resolveClientFromRef_(linkedClientRef, clientsById) || {};
 
-    const caseOpenedDate = toDateOnlyMaybe_(
-      firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date)
-    );
+    const caseCandidateDates = getCaseLeadMatchDates_(caseRow);
 
     const caseClientName = normalizeText_(
       firstNonEmpty_(
@@ -142,82 +148,116 @@ function buildLeadMatches_(cases, mycaseLeadsReport, clientsById) {
       )
     );
 
-    const casePhone = normalizePhone_(
-      firstNonEmpty_(
-        linkedClient.cell_phone_number,
-        linkedClient.home_phone_number,
-        linkedClient.work_phone_number,
-        linkedClient.phone
-      )
+    const casePracticeArea = normalizeText_(
+      firstNonEmpty_(caseRow.practice_area, caseRow.practice_area_name)
     );
 
-    let bestMatch = null;
-    let bestScore = 0;
+    mycaseLeadsReport.forEach(function(leadRow, reportIndex) {
+      // Current MyCase Leads Referral Source export header is "Lead". The
+      // fallback preserves compatibility with older exports that used "Lead name".
+      const leadName = normalizeText_(
+        firstNonEmpty_(leadRow['Lead'], leadRow['Lead name'])
+      );
+      const leadConversionDate = toDateOnlyKey_(leadRow['Conversion date']);
+      const leadPracticeArea = normalizeText_(leadRow['Practice area']);
 
-    mycaseLeadsReport.forEach(function(leadRow) {
-      const leadName = normalizeText_(leadRow['Lead name']);
-      const leadPhone = normalizePhone_(leadRow['Phone number']);
-      const leadConversionDate = toDateOnlyMaybe_(leadRow['Conversion date']);
+      const isNameMatch = Boolean(
+        caseClientName && leadName && caseClientName === leadName
+      );
+      const isConversionDateMatch = Boolean(
+        leadConversionDate && caseCandidateDates.indexOf(leadConversionDate) !== -1
+      );
+      const hasComparablePracticeArea = Boolean(casePracticeArea && leadPracticeArea);
+      const isPracticeAreaMatch = !hasComparablePracticeArea ||
+        casePracticeArea === leadPracticeArea;
 
-      let score = 0;
+      // The report has no MyCase IDs, email, or phone number. Do not generate
+      // an attribution from a name-only match; it must also agree on conversion
+      // date. A populated but different practice area is a hard rejection.
+      if (!isNameMatch || !isConversionDateMatch || !isPracticeAreaMatch) return;
 
-      if (caseClientName && leadName && caseClientName === leadName) score += 3;
-      if (casePhone && leadPhone && casePhone === leadPhone) score += 4;
-      if (caseOpenedDate && leadConversionDate && caseOpenedDate === leadConversionDate) score += 2;
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = {
-          lead_name: leadRow['Lead name'] || '',
+      candidates.push({
+        case_id: caseId,
+        report_key: String(reportIndex),
+        lead_name: firstNonEmpty_(leadRow['Lead'], leadRow['Lead name']),
           lead_status: leadRow['Lead status'] || '',
           practice_area: leadRow['Practice area'] || '',
-          phone_number: leadRow['Phone number'] || '',
           date_added: leadRow['Date added'] || '',
           referral_source: leadRow['Referral source'] || '',
           referred_by: leadRow['Referred by'] || '',
           value: leadRow['Value'] || '',
           conversion_date: leadRow['Conversion date'] || '',
-          match_score: score,
-          match_method: buildLeadMatchMethod_({
-            caseClientName: caseClientName,
-            leadName: leadName,
-            casePhone: casePhone,
-            leadPhone: leadPhone,
-            caseOpenedDate: caseOpenedDate,
-            leadConversionDate: leadConversionDate
-          })
-        };
-      }
+        match_score: hasComparablePracticeArea ? 10 : 8,
+        match_method: hasComparablePracticeArea
+          ? 'lead_name+conversion_date+practice_area'
+          : 'lead_name+conversion_date',
+        match_confidence: hasComparablePracticeArea ? 'high' : 'medium',
+        match_status: 'candidate'
+      });
+    });
+  });
+
+  const candidateCountByCaseId = {};
+  const candidateCountByReportKey = {};
+
+  candidates.forEach(function(candidate) {
+    candidateCountByCaseId[candidate.case_id] =
+      (candidateCountByCaseId[candidate.case_id] || 0) + 1;
+    candidateCountByReportKey[candidate.report_key] =
+      (candidateCountByReportKey[candidate.report_key] || 0) + 1;
+  });
+
+  Object.keys(candidateCountByCaseId).forEach(function(caseId) {
+    const caseCandidates = candidates.filter(function(candidate) {
+      return candidate.case_id === caseId;
+    });
+    const hasAmbiguousReportRow = caseCandidates.some(function(candidate) {
+      return candidateCountByReportKey[candidate.report_key] !== 1;
     });
 
-    if (bestMatch && bestScore >= 4) {
-      out[caseId] = bestMatch;
+    if (candidateCountByCaseId[caseId] > 1 || hasAmbiguousReportRow) {
+      out[caseId] = {
+        match_status: 'ambiguous',
+        match_confidence: 'needs_review',
+        match_candidate_count: candidateCountByCaseId[caseId]
+      };
     }
+  });
+
+  candidates.forEach(function(candidate) {
+    // A report row can be assigned only when it has one possible case, and the
+    // case has one possible report row. Anything else needs manual review.
+    if (candidateCountByCaseId[candidate.case_id] !== 1) return;
+    if (candidateCountByReportKey[candidate.report_key] !== 1) return;
+
+    candidate.match_status = 'matched';
+    candidate.match_candidate_count = 1;
+    out[candidate.case_id] = candidate;
   });
 
   return out;
 }
 
-function buildLeadMatchMethod_(args) {
-  const parts = [];
+function getCaseLeadMatchDates_(caseRow) {
+  const dates = [
+    toDateOnlyKey_(firstNonEmpty_(caseRow.created_at, caseRow.case_created_at)),
+    toDateOnlyKey_(firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date))
+  ].filter(Boolean);
 
-  if (args.caseClientName && args.leadName && args.caseClientName === args.leadName) {
-    parts.push('lead_name');
-  }
+  return dates.filter(function(value, index) {
+    return dates.indexOf(value) === index;
+  });
+}
 
-  if (args.casePhone && args.leadPhone && args.casePhone === args.leadPhone) {
-    parts.push('phone_number');
-  }
+function toDateOnlyKey_(value) {
+  const date = toDateOnlyMaybe_(value);
+  if (!date) return '';
 
-  if (
-    args.caseOpenedDate &&
-    args.leadConversionDate &&
-    args.caseOpenedDate === args.leadConversionDate
-  ) {
-    parts.push('conversion_date');
-  }
-
-  return parts.join('+');
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-');
 }
 
 function normalizeConsultationFeeEventType_(value) {
@@ -256,6 +296,7 @@ function formatFactCaseMasterColumns_() {
 
   [
     'case_opened_date',
+    'case_created_at',
     'case_updated_at',
     'first_initial_consultation_date',
     'lead_date_added',
@@ -273,7 +314,8 @@ function formatFactCaseMasterColumns_() {
     'total_balance',
     'consultation_fee',
     'lead_value',
-    'lead_match_score'
+    'lead_match_score',
+    'lead_match_candidate_count'
   ].forEach(function(name) {
     const col = headers.indexOf(name) + 1;
     if (col > 0) {
