@@ -73,6 +73,11 @@ Main goals:
 - [`Model_CaseMaster.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_CaseMaster.js)
   Builds `fact_case_master`. Combines cases, clients, invoices, events, lead report data, and custom fields.
 
+- [`Model_FactCase.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_FactCase.js)
+  Builds the normalized `fact_case` table with one row per case. It excludes client and lead PII, keeps analytic keys and case-level measures, and is intended as the new reporting base.
+
+  It is complemented by `bridge_case_staff`, which preserves the many-to-many current assignment of workers to cases.
+
 - [`Model_Consultations.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_Consultations.js)
   Builds `fact_consultations`.
 
@@ -120,7 +125,8 @@ Common public functions in `Main.js`:
 1. Sync core raw inputs
 2. Import latest leads report from Drive
 3. Rebuild `fact_case_master`
-4. Update refresh timestamp in the `Menu` sheet
+4. Rebuild `fact_case`
+5. Update refresh timestamp in the `Menu` sheet
 
 ### Expenses Exploration Flow
 
@@ -153,6 +159,8 @@ Current raw sheets include:
 Current modeled/report sheets include:
 
 - `fact_case_master`
+- `fact_case`
+- `bridge_case_staff`
 - `fact_consultations`
 - `funnel_leads_by_date`
 - `case_staff_summary`

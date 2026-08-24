@@ -47,3 +47,46 @@ function buildCaseStaffTable() {
 
   writeRowsToSheet_('case_staff_summary', output);
 }
+
+/**
+ * Current case-to-worker bridge. A case can appear more than once here, so
+ * dashboard calculations must count distinct case_key after joining it to
+ * fact_case; never sum fact_case.case_count through this bridge.
+ */
+function buildBridgeCaseStaff() {
+  const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
+  const staff = readSheetAsObjectsIfExists_(CONFIG.sheets.rawStaff);
+  const staffById = indexBy_(staff, 'id');
+  const rows = [];
+
+  cases.forEach(function(caseRow) {
+    const caseKey = String(firstNonEmpty_(caseRow.id, caseRow.case_id)).trim();
+    const assignments = parseJsonMaybe_(firstNonEmpty_(caseRow.staff, '[]'));
+    if (!caseKey || !Array.isArray(assignments)) return;
+
+    assignments.forEach(function(assignment) {
+      const staffKey = String(firstNonEmpty_(assignment.id, assignment.staff_id)).trim();
+      if (!staffKey) return;
+
+      const staffRow = staffById[staffKey] || {};
+      const isLeadAttorney = assignment.lead_lawyer === true;
+      const isOriginatingAttorney = assignment.originating_lawyer === true;
+      const isAttorney = isLeadAttorney || isOriginatingAttorney ||
+        normalizeText_(staffRow.title).indexOf('attorney') !== -1 ||
+        normalizeText_(staffRow.role).indexOf('attorney') !== -1;
+
+      rows.push({
+        case_key: caseKey,
+        staff_key: staffKey,
+        staffing_role: isLeadAttorney ? 'lead_attorney' :
+          (isOriginatingAttorney ? 'originating_attorney' :
+            (isAttorney ? 'attorney' : 'assigned_staff')),
+        is_lead_attorney: isLeadAttorney ? 1 : 0,
+        is_originating_attorney: isOriginatingAttorney ? 1 : 0,
+        is_attorney: isAttorney ? 1 : 0
+      });
+    });
+  });
+
+  writeRowsToSheet_(CONFIG.sheets.bridgeCaseStaff, rows);
+}

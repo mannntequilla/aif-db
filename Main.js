@@ -51,7 +51,9 @@ function syncCaseMasterInputs() {
     'invoices',
     'expenses',
     'events',
-    'customFields'
+    'customFields',
+    'staff',
+    'roles'
   ]);
 }
 
@@ -85,19 +87,25 @@ function fullRefreshCaseMaster() {
     Logger.log('4. Build fact_case_master...');
     buildFactCaseMaster();
 
-    Logger.log('5. Build bridge_client_cases...');
+    Logger.log('5. Build fact_case...');
+    buildFactCase();
+
+    Logger.log('6. Build bridge_case_staff...');
+    buildBridgeCaseStaff();
+
+    Logger.log('7. Build bridge_client_cases...');
     buildBridgeClientCases();
 
-    Logger.log('6. Build bridge_lead_case...');
+    Logger.log('8. Build bridge_lead_case...');
     buildBridgeLeadCase();
 
-    Logger.log('7. Build EventsPerCaseId...');
+    Logger.log('9. Build EventsPerCaseId...');
     buildEventsPerCaseId();
 
-    Logger.log('8. Build fact_case_profitability...');
+    Logger.log('10. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('9. updateLastRefreshTimestamp_');
+    Logger.log('11. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshCaseMaster ===');
@@ -136,22 +144,28 @@ function fullRefreshAll() {
     Logger.log('4. Build fact_case_master...');
     buildFactCaseMaster();
 
-    Logger.log('5. Build bridge_client_cases...');
+    Logger.log('5. Build fact_case...');
+    buildFactCase();
+
+    Logger.log('6. Build bridge_case_staff...');
+    buildBridgeCaseStaff();
+
+    Logger.log('7. Build bridge_client_cases...');
     buildBridgeClientCases();
 
-    Logger.log('6. Build bridge_lead_case...');
+    Logger.log('8. Build bridge_lead_case...');
     buildBridgeLeadCase();
 
-    Logger.log('7. Build EventsPerCaseId...');
+    Logger.log('9. Build EventsPerCaseId...');
     buildEventsPerCaseId();
 
-    Logger.log('8. Build fact_case_profitability...');
+    Logger.log('10. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('9. Build case staff table...');
+    Logger.log('11. Build case staff table...');
     buildCaseStaffTable();
 
-    Logger.log('10. updateLastRefreshTimestamp_');
+    Logger.log('12. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshAll ===');
