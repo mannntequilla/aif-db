@@ -61,6 +61,8 @@ function buildCaseWorkloadByStaff() {
         current_case_stage_key: firstNonEmpty_(factCase.current_case_stage_key),
         case_status_key: firstNonEmpty_(factCase.case_status_key),
         opened_date: firstNonEmpty_(factCase.opened_date),
+        created_date: firstNonEmpty_(factCase.created_date),
+        has_missing_opened_date: firstNonEmpty_(factCase.opened_date) ? 0 : 1,
         days_since_open: firstNonEmpty_(factCase.days_since_open),
         days_since_last_activity: firstNonEmpty_(factCase.days_since_last_activity),
         is_open: firstNonEmpty_(factCase.is_open),
