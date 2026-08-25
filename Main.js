@@ -56,6 +56,33 @@ function refreshCaseStaffingAnalytics() {
   }
 }
 
+/**
+ * Rebuilds the operational workload and attention views after the daily
+ * reporting refresh has completed. It is intentionally separate because it
+ * adds three additional spreadsheet writes.
+ */
+function refreshOperationsOverview() {
+  const lock = LockService.getScriptLock();
+
+  if (!lock.tryLock(30000)) {
+    Logger.log('Ya hay una ejecucion en curso. Intenta nuevamente en unos minutos.');
+    return;
+  }
+
+  try {
+    Logger.log('=== INICIO refreshOperationsOverview ===');
+    syncResourcesByKeys_(['cases', 'staff']);
+    buildOperationsOverviewData_();
+    Logger.log('=== FIN OK refreshOperationsOverview ===');
+  } catch (error) {
+    Logger.log('ERROR en refreshOperationsOverview: ' + error.message);
+    Logger.log(error.stack);
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function refreshReporting_() {
   const lock = LockService.getScriptLock();
 
@@ -93,9 +120,6 @@ function refreshReporting_() {
     Logger.log('8. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('9. Build operations overview data...');
-    buildOperationsOverviewData_();
-
     updateLastRefreshTimestamp_();
     Logger.log('=== FIN OK runDailyRefresh ===');
     Logger.log('Duracion total: ' + ((new Date() - start) / 1000) + ' segundos');
@@ -115,7 +139,6 @@ function syncReportingInputs_() {
     'invoices',
     'expenses',
     'events',
-    'staff',
     'customFields'
   ]);
 }

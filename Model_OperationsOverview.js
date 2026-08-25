@@ -15,12 +15,15 @@ function buildOperationsOverviewData_() {
  */
 function buildOperationsStaffRoster_() {
   const staff = readSheetAsObjectsIfExists_(CONFIG.sheets.rawStaff);
+  const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
   const existing = readSheetAsObjectsIfExists_(CONFIG.sheets.operationsStaffRoster);
   const existingByStaffKey = indexBy_(existing, 'staff_key');
+  const leadParalegalKeys = getLeadParalegalKeys_(cases);
 
   const rows = staff.map(function(staffRow) {
     const staffKey = String(firstNonEmpty_(staffRow.id)).trim();
     const current = existingByStaffKey[staffKey] || {};
+    const isLeadParalegal = Boolean(leadParalegalKeys[staffKey]);
 
     return {
       staff_key: staffKey,
@@ -28,8 +31,8 @@ function buildOperationsStaffRoster_() {
       source_title: firstNonEmpty_(staffRow.title),
       source_type: firstNonEmpty_(staffRow.type),
       staff_active: firstNonEmpty_(staffRow.active),
-      operational_role: firstNonEmpty_(current.operational_role, 'unclassified'),
-      is_paralegal: firstNonEmpty_(current.is_paralegal, 'No'),
+      operational_role: isLeadParalegal ? 'paralegal' : firstNonEmpty_(current.operational_role, 'unclassified'),
+      is_paralegal: isLeadParalegal ? 'Yes' : firstNonEmpty_(current.is_paralegal, 'No'),
       is_case_owner: firstNonEmpty_(current.is_case_owner, 'No'),
       supervisor: firstNonEmpty_(current.supervisor),
       notes: firstNonEmpty_(current.notes)
@@ -39,6 +42,19 @@ function buildOperationsStaffRoster_() {
   writeRowsToSheet_(CONFIG.sheets.operationsStaffRoster, rows);
   const sheet = getSpreadsheet_().getSheetByName(CONFIG.sheets.operationsStaffRoster);
   if (sheet) sheet.setFrozenRows(1);
+}
+
+function getLeadParalegalKeys_(cases) {
+  const keys = {};
+  cases.forEach(function(caseRow) {
+    const assignments = parseJsonMaybe_(firstNonEmpty_(caseRow.staff, '[]'));
+    if (!Array.isArray(assignments)) return;
+    assignments.forEach(function(assignment) {
+      const staffKey = String(firstNonEmpty_(assignment.id, assignment.staff_id)).trim();
+      if (staffKey && assignment.lead_lawyer === true) keys[staffKey] = true;
+    });
+  });
+  return keys;
 }
 
 /**

@@ -38,9 +38,12 @@ function buildCaseWorkloadByStaff() {
       );
       const isLeadAttorney = assignment.lead_lawyer === true;
       const isOriginatingAttorney = assignment.originating_lawyer === true;
-      const isAttorney = isLeadAttorney || isOriginatingAttorney ||
+      // In this MyCase setup, lead_lawyer denotes the operational paralegal
+      // responsible for the case; it is not a reliable attorney classification.
+      const isAttorney = !isLeadAttorney && (
         normalizeText_(staffRow.title).indexOf('attorney') !== -1 ||
-        normalizeText_(staffRow.role).indexOf('attorney') !== -1;
+        normalizeText_(staffRow.role).indexOf('attorney') !== -1
+      );
 
       rows.push({
         case_key: caseKey,
@@ -52,7 +55,7 @@ function buildCaseWorkloadByStaff() {
         operational_role: firstNonEmpty_(operationsStaffRow.operational_role, 'unclassified'),
         is_paralegal: firstNonEmpty_(operationsStaffRow.is_paralegal, 'No'),
         is_case_owner: firstNonEmpty_(operationsStaffRow.is_case_owner, 'No'),
-        staffing_role: isLeadAttorney ? 'lead_attorney' :
+        staffing_role: isLeadAttorney ? 'lead_paralegal' :
           (isOriginatingAttorney ? 'originating_attorney' :
             (isAttorney ? 'attorney' : 'assigned_staff')),
         is_lead_attorney: isLeadAttorney ? 1 : 0,

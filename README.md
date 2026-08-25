@@ -98,6 +98,7 @@ Common public functions in `Main.js`:
 
 - `runDailyRefresh()`
 - `refreshCaseStaffingAnalytics()`
+- `refreshOperationsOverview()`
 - `resetDailyRefreshTrigger()`
 
 ## Main Data Flow
@@ -126,6 +127,10 @@ syncs only cases and staff, then rebuilds `case_workload_by_staff`. Use it
 before reviewing workload by worker; keeping it independent avoids accumulating
 too many spreadsheet writes in the primary refresh. Use `staff_name` as the
 chart label and retain `staff_key` only for joins.
+
+`refreshOperationsOverview()` rebuilds the operational roster, workload and
+case-attention views separately from the daily refresh, preventing additional
+spreadsheet writes from causing a timeout in the core reporting process.
 
 ## Raw Sheets
 
