@@ -69,6 +69,10 @@ function buildBridgeCaseStaff() {
       if (!staffKey) return;
 
       const staffRow = staffById[staffKey] || {};
+      const staffName = firstNonEmpty_(
+        staffRow.full_name,
+        buildFullName_(staffRow)
+      );
       const isLeadAttorney = assignment.lead_lawyer === true;
       const isOriginatingAttorney = assignment.originating_lawyer === true;
       const isAttorney = isLeadAttorney || isOriginatingAttorney ||
@@ -78,6 +82,10 @@ function buildBridgeCaseStaff() {
       rows.push({
         case_key: caseKey,
         staff_key: staffKey,
+        // Display attribute for charts. Keep staff_key as the relationship key.
+        staff_name: staffName || ('Unknown staff ' + staffKey),
+        staff_title: firstNonEmpty_(staffRow.title),
+        staff_active: firstNonEmpty_(staffRow.active),
         staffing_role: isLeadAttorney ? 'lead_attorney' :
           (isOriginatingAttorney ? 'originating_attorney' :
             (isAttorney ? 'attorney' : 'assigned_staff')),

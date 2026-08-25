@@ -51,10 +51,35 @@ function syncCaseMasterInputs() {
     'invoices',
     'expenses',
     'events',
-    'customFields',
-    'staff',
-    'roles'
+    'customFields'
   ]);
+}
+
+/**
+ * Refreshes the current case-to-worker assignments independently from the
+ * regular case refresh. This keeps the high-volume spreadsheet writes apart
+ * and avoids a Sheets timeout after the core reporting tables are rebuilt.
+ */
+function refreshCaseStaffingAnalytics() {
+  const lock = LockService.getScriptLock();
+
+  if (!lock.tryLock(30000)) {
+    Logger.log('Ya hay una ejecucion en curso. Intenta nuevamente en unos minutos.');
+    return;
+  }
+
+  try {
+    Logger.log('=== INICIO refreshCaseStaffingAnalytics ===');
+    syncResourcesByKeys_(['cases', 'staff']);
+    buildBridgeCaseStaff();
+    Logger.log('=== FIN OK refreshCaseStaffingAnalytics ===');
+  } catch (error) {
+    Logger.log('ERROR en refreshCaseStaffingAnalytics: ' + error.message);
+    Logger.log(error.stack);
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function exploreExpensesRaw() {
@@ -90,22 +115,19 @@ function fullRefreshCaseMaster() {
     Logger.log('5. Build fact_case...');
     buildFactCase();
 
-    Logger.log('6. Build bridge_case_staff...');
-    buildBridgeCaseStaff();
-
-    Logger.log('7. Build bridge_client_cases...');
+    Logger.log('6. Build bridge_client_cases...');
     buildBridgeClientCases();
 
-    Logger.log('8. Build bridge_lead_case...');
+    Logger.log('7. Build bridge_lead_case...');
     buildBridgeLeadCase();
 
-    Logger.log('9. Build EventsPerCaseId...');
+    Logger.log('8. Build EventsPerCaseId...');
     buildEventsPerCaseId();
 
-    Logger.log('10. Build fact_case_profitability...');
+    Logger.log('9. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('11. updateLastRefreshTimestamp_');
+    Logger.log('10. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshCaseMaster ===');
@@ -147,25 +169,22 @@ function fullRefreshAll() {
     Logger.log('5. Build fact_case...');
     buildFactCase();
 
-    Logger.log('6. Build bridge_case_staff...');
-    buildBridgeCaseStaff();
-
-    Logger.log('7. Build bridge_client_cases...');
+    Logger.log('6. Build bridge_client_cases...');
     buildBridgeClientCases();
 
-    Logger.log('8. Build bridge_lead_case...');
+    Logger.log('7. Build bridge_lead_case...');
     buildBridgeLeadCase();
 
-    Logger.log('9. Build EventsPerCaseId...');
+    Logger.log('8. Build EventsPerCaseId...');
     buildEventsPerCaseId();
 
-    Logger.log('10. Build fact_case_profitability...');
+    Logger.log('9. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('11. Build case staff table...');
+    Logger.log('10. Build case staff table...');
     buildCaseStaffTable();
 
-    Logger.log('12. updateLastRefreshTimestamp_');
+    Logger.log('11. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshAll ===');

@@ -128,6 +128,15 @@ Common public functions in `Main.js`:
 4. Rebuild `fact_case`
 5. Update refresh timestamp in the `Menu` sheet
 
+### Staffing Analytics Refresh
+
+`refreshCaseStaffingAnalytics()` runs separately from the regular refresh. It
+syncs only cases and staff, then rebuilds `bridge_case_staff`. Use it before
+reviewing workload by worker; keeping it independent avoids accumulating too
+many spreadsheet writes in the primary refresh. The bridge includes both
+`staff_key` and `staff_name`; charts should use `staff_name` as their label
+and retain `staff_key` only for joins.
+
 ### Expenses Exploration Flow
 
 `exploreExpensesRaw()` does:
