@@ -7,10 +7,8 @@ function buildCaseWorkloadByStaff() {
   const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
   const staff = readSheetAsObjectsIfExists_(CONFIG.sheets.rawStaff);
   const factCases = readSheetAsObjectsIfExists_(CONFIG.sheets.factCase);
-  const operationsStaff = readSheetAsObjectsIfExists_(CONFIG.sheets.operationsStaffRoster);
   const staffById = indexBy_(staff, 'id');
   const factCaseByKey = indexBy_(factCases, 'case_key');
-  const operationsStaffByKey = indexBy_(operationsStaff, 'staff_key');
   const rows = [];
   const seenAssignments = {};
 
@@ -30,7 +28,6 @@ function buildCaseWorkloadByStaff() {
       seenAssignments[assignmentKey] = true;
 
       const staffRow = staffById[staffKey] || {};
-      const operationsStaffRow = operationsStaffByKey[staffKey] || {};
       const factCase = factCaseByKey[caseKey] || {};
       const staffName = firstNonEmpty_(
         staffRow.full_name,
@@ -38,8 +35,8 @@ function buildCaseWorkloadByStaff() {
       );
       const isLeadAttorney = assignment.lead_lawyer === true;
       const isOriginatingAttorney = assignment.originating_lawyer === true;
-      // In this MyCase setup, lead_lawyer denotes the operational paralegal
-      // responsible for the case; it is not a reliable attorney classification.
+      // MyCase's lead_lawyer assignment is the operational lead paralegal in
+      // this workflow; attorney status is determined independently.
       const isAttorney = !isLeadAttorney && (
         normalizeText_(staffRow.title).indexOf('attorney') !== -1 ||
         normalizeText_(staffRow.role).indexOf('attorney') !== -1
@@ -52,10 +49,7 @@ function buildCaseWorkloadByStaff() {
         staff_name: staffName || ('Unknown staff ' + staffKey),
         staff_title: firstNonEmpty_(staffRow.title),
         staff_active: firstNonEmpty_(staffRow.active),
-        operational_role: firstNonEmpty_(operationsStaffRow.operational_role, 'unclassified'),
-        is_paralegal: firstNonEmpty_(operationsStaffRow.is_paralegal, 'No'),
-        is_case_owner: firstNonEmpty_(operationsStaffRow.is_case_owner, 'No'),
-        staffing_role: isLeadAttorney ? 'lead_paralegal' :
+        staffing_role: isLeadAttorney ? 'lead_attorney' :
           (isOriginatingAttorney ? 'originating_attorney' :
             (isAttorney ? 'attorney' : 'assigned_staff')),
         is_lead_attorney: isLeadAttorney ? 1 : 0,

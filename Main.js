@@ -57,9 +57,7 @@ function refreshCaseStaffingAnalytics() {
 }
 
 /**
- * Rebuilds the operational workload and attention views after the daily
- * reporting refresh has completed. It is intentionally separate because it
- * adds three additional spreadsheet writes.
+ * Rebuilds the current workload table used by the Operations Overview.
  */
 function refreshOperationsOverview() {
   const lock = LockService.getScriptLock();
@@ -72,7 +70,8 @@ function refreshOperationsOverview() {
   try {
     Logger.log('=== INICIO refreshOperationsOverview ===');
     syncResourcesByKeys_(['cases', 'staff']);
-    buildOperationsOverviewData_();
+    buildStageOperatingModel();
+    buildCaseWorkloadByStaff();
     Logger.log('=== FIN OK refreshOperationsOverview ===');
   } catch (error) {
     Logger.log('ERROR en refreshOperationsOverview: ' + error.message);
