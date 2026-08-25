@@ -78,14 +78,8 @@ Main goals:
 
   It is complemented by `case_workload_by_staff`, which has one row per case and assigned worker and is the reusable source for workload charts.
 
-- [`Model_Consultations.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_Consultations.js)
-  Builds `fact_consultations`.
-
-- [`Model_Funnel.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_Funnel.js)
-  Builds the lead funnel by date from the imported leads report.
-
 - [`Model_Staffing.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_Staffing.js)
-  Builds a case-to-staff summary table.
+  Builds the reusable `case_workload_by_staff` reporting table.
 
 ### Debug / Exploration
 
@@ -157,9 +151,6 @@ Current modeled/report sheets include:
 - `fact_case_master`
 - `fact_case`
 - `case_workload_by_staff`
-- `fact_consultations`
-- `funnel_leads_by_date`
-- `debug_expenses_profile`
 
 ## Custom Fields
 

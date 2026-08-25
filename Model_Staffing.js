@@ -1,53 +1,3 @@
-function buildCaseStaffTable() {
-  const casesSheet = readSheetAsObjects_(CONFIG.sheets.rawCases);
-  const staffSheet = readSheetAsObjects_(CONFIG.sheets.rawStaff);
-  const staffById = {};
-
-  staffSheet.forEach(function(s) {
-    const id = String(s.id).trim();
-    staffById[id] = s;
-  });
-
-  const output = [];
-
-  casesSheet.forEach(function(c) {
-    const caseId = c.id;
-    const caseName = c.name;
-    const caseStaff = c.staff;
-
-    let assignedStaffNames = [];
-    let assignedStaffIds = [];
-
-    if (caseStaff) {
-      const parsedStaff = parseJsonMaybe_(caseStaff);
-
-      if (Array.isArray(parsedStaff)) {
-        parsedStaff.forEach(function(member) {
-          const staffId = String(member.id).trim();
-          const staffMatch = staffById[staffId];
-
-          const fullName = staffMatch
-            ? [staffMatch.first_name, staffMatch.last_name].filter(Boolean).join(' ')
-            : `ID ${staffId}`;
-
-          assignedStaffNames.push(fullName);
-          assignedStaffIds.push(staffId);
-        });
-      }
-    }
-
-    output.push({
-      case_id: caseId,
-      case_name: caseName,
-      assigned_staff_names: assignedStaffNames.join(', '),
-      assigned_staff_ids: assignedStaffIds.join(', '),
-      has_staff_assigned: assignedStaffNames.length > 0 ? 'Yes' : 'No'
-    });
-  });
-
-  writeRowsToSheet_('case_staff_summary', output);
-}
-
 /**
  * Reusable workload mart with one row per case and assigned worker. It brings
  * current case attributes into the assignment grain, so charts can filter and
@@ -57,8 +7,10 @@ function buildCaseWorkloadByStaff() {
   const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
   const staff = readSheetAsObjectsIfExists_(CONFIG.sheets.rawStaff);
   const factCases = readSheetAsObjectsIfExists_(CONFIG.sheets.factCase);
+  const operationsStaff = readSheetAsObjectsIfExists_(CONFIG.sheets.operationsStaffRoster);
   const staffById = indexBy_(staff, 'id');
   const factCaseByKey = indexBy_(factCases, 'case_key');
+  const operationsStaffByKey = indexBy_(operationsStaff, 'staff_key');
   const rows = [];
   const seenAssignments = {};
 
@@ -78,6 +30,7 @@ function buildCaseWorkloadByStaff() {
       seenAssignments[assignmentKey] = true;
 
       const staffRow = staffById[staffKey] || {};
+      const operationsStaffRow = operationsStaffByKey[staffKey] || {};
       const factCase = factCaseByKey[caseKey] || {};
       const staffName = firstNonEmpty_(
         staffRow.full_name,
@@ -96,6 +49,9 @@ function buildCaseWorkloadByStaff() {
         staff_name: staffName || ('Unknown staff ' + staffKey),
         staff_title: firstNonEmpty_(staffRow.title),
         staff_active: firstNonEmpty_(staffRow.active),
+        operational_role: firstNonEmpty_(operationsStaffRow.operational_role, 'unclassified'),
+        is_paralegal: firstNonEmpty_(operationsStaffRow.is_paralegal, 'No'),
+        is_case_owner: firstNonEmpty_(operationsStaffRow.is_case_owner, 'No'),
         staffing_role: isLeadAttorney ? 'lead_attorney' :
           (isOriginatingAttorney ? 'originating_attorney' :
             (isAttorney ? 'attorney' : 'assigned_staff')),

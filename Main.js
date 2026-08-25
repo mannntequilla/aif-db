@@ -75,26 +75,26 @@ function refreshReporting_() {
     Logger.log('2. Import latest MyCase leads report...');
     importLatestMyCaseLeadsReportFromDrive();
 
-    Logger.log('3. Build dim_date...');
-    buildDimDate();
-
-    Logger.log('4. Build fact_case_master...');
+    Logger.log('3. Build fact_case_master...');
     buildFactCaseMaster();
 
-    Logger.log('5. Build fact_case...');
+    Logger.log('4. Build fact_case...');
     buildFactCase();
 
-    Logger.log('6. Build bridge_client_cases...');
+    Logger.log('5. Build bridge_client_cases...');
     buildBridgeClientCases();
 
-    Logger.log('7. Build bridge_lead_case...');
+    Logger.log('6. Build bridge_lead_case...');
     buildBridgeLeadCase();
 
-    Logger.log('8. Build EventsPerCaseId...');
+    Logger.log('7. Build EventsPerCaseId...');
     buildEventsPerCaseId();
 
-    Logger.log('9. Build fact_case_profitability...');
+    Logger.log('8. Build fact_case_profitability...');
     buildFactCaseProfitability();
+
+    Logger.log('9. Build operations overview data...');
+    buildOperationsOverviewData_();
 
     updateLastRefreshTimestamp_();
     Logger.log('=== FIN OK runDailyRefresh ===');
@@ -115,6 +115,7 @@ function syncReportingInputs_() {
     'invoices',
     'expenses',
     'events',
+    'staff',
     'customFields'
   ]);
 }
