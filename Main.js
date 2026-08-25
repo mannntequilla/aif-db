@@ -71,8 +71,7 @@ function refreshCaseStaffingAnalytics() {
   try {
     Logger.log('=== INICIO refreshCaseStaffingAnalytics ===');
     syncResourcesByKeys_(['cases', 'staff']);
-    buildBridgeCaseStaff();
-    buildOpenCasesByParalegalReport();
+    buildCaseWorkloadByStaff();
     Logger.log('=== FIN OK refreshCaseStaffingAnalytics ===');
   } catch (error) {
     Logger.log('ERROR en refreshCaseStaffingAnalytics: ' + error.message);
@@ -182,10 +181,7 @@ function fullRefreshAll() {
     Logger.log('9. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('10. Build case staff table...');
-    buildCaseStaffTable();
-
-    Logger.log('11. updateLastRefreshTimestamp_');
+    Logger.log('10. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
 
     Logger.log('=== FIN OK fullRefreshAll ===');

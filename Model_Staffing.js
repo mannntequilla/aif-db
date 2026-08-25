@@ -49,15 +49,20 @@ function buildCaseStaffTable() {
 }
 
 /**
- * Current case-to-worker bridge. A case can appear more than once here, so
- * dashboard calculations must count distinct case_key after joining it to
- * fact_case; never sum fact_case.case_count through this bridge.
+ * Reusable workload mart with one row per case and assigned worker. It brings
+ * current case attributes into the assignment grain, so charts can filter and
+ * group directly from this sheet without creating a new table per chart.
  */
-function buildBridgeCaseStaff() {
+function buildCaseWorkloadByStaff() {
   const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
   const staff = readSheetAsObjectsIfExists_(CONFIG.sheets.rawStaff);
+  const factCases = readSheetAsObjectsIfExists_(CONFIG.sheets.factCase);
   const staffById = indexBy_(staff, 'id');
+  const factCaseByKey = indexBy_(factCases, 'case_key');
   const rows = [];
+  const seenAssignments = {};
+
+  migrateBridgeCaseStaffSheet_();
 
   cases.forEach(function(caseRow) {
     const caseKey = String(firstNonEmpty_(caseRow.id, caseRow.case_id)).trim();
@@ -68,7 +73,12 @@ function buildBridgeCaseStaff() {
       const staffKey = String(firstNonEmpty_(assignment.id, assignment.staff_id)).trim();
       if (!staffKey) return;
 
+      const assignmentKey = [caseKey, staffKey].join('|');
+      if (seenAssignments[assignmentKey]) return;
+      seenAssignments[assignmentKey] = true;
+
       const staffRow = staffById[staffKey] || {};
+      const factCase = factCaseByKey[caseKey] || {};
       const staffName = firstNonEmpty_(
         staffRow.full_name,
         buildFullName_(staffRow)
@@ -81,8 +91,8 @@ function buildBridgeCaseStaff() {
 
       rows.push({
         case_key: caseKey,
+        case_id: firstNonEmpty_(factCase.case_id, caseKey),
         staff_key: staffKey,
-        // Display attribute for charts. Keep staff_key as the relationship key.
         staff_name: staffName || ('Unknown staff ' + staffKey),
         staff_title: firstNonEmpty_(staffRow.title),
         staff_active: firstNonEmpty_(staffRow.active),
@@ -91,68 +101,32 @@ function buildBridgeCaseStaff() {
             (isAttorney ? 'attorney' : 'assigned_staff')),
         is_lead_attorney: isLeadAttorney ? 1 : 0,
         is_originating_attorney: isOriginatingAttorney ? 1 : 0,
-        is_attorney: isAttorney ? 1 : 0
+        is_attorney: isAttorney ? 1 : 0,
+
+        case_type_key: firstNonEmpty_(factCase.case_type_key),
+        practice_area_key: firstNonEmpty_(factCase.practice_area_key),
+        current_case_stage_key: firstNonEmpty_(factCase.current_case_stage_key),
+        case_status_key: firstNonEmpty_(factCase.case_status_key),
+        opened_date: firstNonEmpty_(factCase.opened_date),
+        days_since_open: firstNonEmpty_(factCase.days_since_open),
+        days_since_last_activity: firstNonEmpty_(factCase.days_since_last_activity),
+        is_open: firstNonEmpty_(factCase.is_open),
+        is_stale_14d: firstNonEmpty_(factCase.is_stale_14d)
       });
     });
   });
 
-  writeRowsToSheet_(CONFIG.sheets.bridgeCaseStaff, rows);
+  writeRowsToSheet_(CONFIG.sheets.caseWorkloadByStaff, rows);
 }
 
-/**
- * Reporting-ready aggregation for the active workload chart. The fact is
- * joined to the staff bridge here, so dashboards do not have to implement a
- * many-to-many join or risk double-counting cases.
- */
-function buildOpenCasesByParalegalReport() {
-  const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
-  const assignments = readSheetAsObjectsIfExists_(CONFIG.sheets.bridgeCaseStaff);
-  const caseByKey = indexBy_(cases, 'id');
-  const grouped = {};
+// Renames the previous technical sheet on its first rebuild, retaining any
+// existing charts or formulas that reference the sheet by name.
+function migrateBridgeCaseStaffSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  const legacySheet = spreadsheet.getSheetByName('bridge_case_staff');
+  const workloadSheet = spreadsheet.getSheetByName(CONFIG.sheets.caseWorkloadByStaff);
 
-  assignments.forEach(function(assignment) {
-    const staffTitle = String(firstNonEmpty_(assignment.staff_title)).trim();
-    if (!isParalegal_(staffTitle)) return;
-
-    const caseRow = caseByKey[String(firstNonEmpty_(assignment.case_key)).trim()] || {};
-    if (!isOpenCase_(caseRow)) return;
-
-    const staffKey = String(firstNonEmpty_(assignment.staff_key)).trim();
-    if (!staffKey) return;
-    if (!grouped[staffKey]) {
-      grouped[staffKey] = {
-        staff_key: staffKey,
-        paralegal_name: firstNonEmpty_(assignment.staff_name, 'Unknown staff ' + staffKey),
-        staff_title: staffTitle,
-        open_case_keys: {}
-      };
-    }
-
-    grouped[staffKey].open_case_keys[String(firstNonEmpty_(assignment.case_key))] = true;
-  });
-
-  const rows = Object.keys(grouped).map(function(staffKey) {
-    const row = grouped[staffKey];
-    return {
-      staff_key: row.staff_key,
-      paralegal_name: row.paralegal_name,
-      staff_title: row.staff_title,
-      open_case_count: Object.keys(row.open_case_keys).length
-    };
-  }).sort(function(a, b) {
-    return b.open_case_count - a.open_case_count ||
-      String(a.paralegal_name).localeCompare(String(b.paralegal_name));
-  });
-
-  writeRowsToSheet_(CONFIG.sheets.reportOpenCasesByParalegal, rows);
-}
-
-function isParalegal_(staffTitle) {
-  return normalizeText_(staffTitle).indexOf('paralegal') !== -1;
-}
-
-function isOpenCase_(caseRow) {
-  const status = normalizeText_(firstNonEmpty_(caseRow.status, caseRow.case_status));
-  const closedDate = toDateOnlyMaybe_(firstNonEmpty_(caseRow.closed_date, caseRow.case_closed_date));
-  return status !== 'closed' && !closedDate;
+  if (legacySheet && !workloadSheet) {
+    legacySheet.setName(CONFIG.sheets.caseWorkloadByStaff);
+  }
 }

@@ -76,7 +76,7 @@ Main goals:
 - [`Model_FactCase.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_FactCase.js)
   Builds the normalized `fact_case` table with one row per case. It excludes client and lead PII, keeps analytic keys and case-level measures, and is intended as the new reporting base.
 
-  It is complemented by `bridge_case_staff`, which preserves the many-to-many current assignment of workers to cases.
+  It is complemented by `case_workload_by_staff`, which has one row per case and assigned worker and is the reusable source for workload charts.
 
 - [`Model_Consultations.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_Consultations.js)
   Builds `fact_consultations`.
@@ -131,15 +131,10 @@ Common public functions in `Main.js`:
 ### Staffing Analytics Refresh
 
 `refreshCaseStaffingAnalytics()` runs separately from the regular refresh. It
-syncs only cases and staff, then rebuilds `bridge_case_staff`. Use it before
-reviewing workload by worker; keeping it independent avoids accumulating too
-many spreadsheet writes in the primary refresh. The bridge includes both
-`staff_key` and `staff_name`; charts should use `staff_name` as their label
-and retain `staff_key` only for joins.
-
-The same refresh builds `report_open_cases_by_paralegal`, with one row per
-paralegal and a distinct count of currently open cases. Use that sheet directly
-as the source for the workload chart.
+syncs only cases and staff, then rebuilds `case_workload_by_staff`. Use it
+before reviewing workload by worker; keeping it independent avoids accumulating
+too many spreadsheet writes in the primary refresh. Use `staff_name` as the
+chart label and retain `staff_key` only for joins.
 
 ### Expenses Exploration Flow
 
@@ -173,10 +168,9 @@ Current modeled/report sheets include:
 
 - `fact_case_master`
 - `fact_case`
-- `bridge_case_staff`
+- `case_workload_by_staff`
 - `fact_consultations`
 - `funnel_leads_by_date`
-- `case_staff_summary`
 - `debug_expenses_profile`
 
 ## Custom Fields
