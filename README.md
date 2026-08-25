@@ -102,25 +102,22 @@ Main goals:
 
 Common public functions in `Main.js`:
 
-- `syncAllRaw()`
-- `syncCaseMasterInputs()`
-- `fullRefreshCaseMaster()`
-- `refreshMyCaseLeadsReport()`
-- `exploreExpensesRaw()`
-- `resetAutoRefreshTrigger()`
+- `runDailyRefresh()`
+- `refreshCaseStaffingAnalytics()`
+- `resetDailyRefreshTrigger()`
 
 ## Main Data Flow
 
 ### Case Master Flow
 
-1. `syncCaseMasterInputs()`
+1. `runDailyRefresh()`
 2. `syncCases()`, `syncClients()`, `syncInvoices()`, `syncEvents()`, `syncCustomFields()`
 3. `importLatestMyCaseLeadsReportFromDrive()`
 4. `buildFactCaseMaster()`
 
 ### Full Refresh Flow
 
-`fullRefreshCaseMaster()` does:
+`runDailyRefresh()` does:
 
 1. Sync core raw inputs
 2. Import latest leads report from Drive
@@ -135,15 +132,6 @@ syncs only cases and staff, then rebuilds `case_workload_by_staff`. Use it
 before reviewing workload by worker; keeping it independent avoids accumulating
 too many spreadsheet writes in the primary refresh. Use `staff_name` as the
 chart label and retain `staff_key` only for joins.
-
-### Expenses Exploration Flow
-
-`exploreExpensesRaw()` does:
-
-1. `syncExpenses()`
-2. `profileExpensesRaw_()`
-
-This is currently a test/exploration flow to inspect whether raw expenses can support a fixed-expenses report.
 
 ## Raw Sheets
 
@@ -204,17 +192,11 @@ clasp show-file-status
 
 For `Retainer` custom field changes:
 
-1. `syncCustomFields()`
-2. `syncCaseMasterInputs()`
-3. `buildFactCaseMaster()`
-
-For expenses exploration:
-
-1. `exploreExpensesRaw()`
+1. `runDailyRefresh()`
 
 For a complete refresh:
 
-1. `fullRefreshCaseMaster()`
+1. `runDailyRefresh()`
 
 ## Maintenance Rules
 
@@ -231,7 +213,7 @@ To add a new MyCase endpoint:
 1. Add the endpoint and target sheet in [`Config.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Config.js)
 2. Add a resource definition in [`Sync_Definitions.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Sync_Definitions.js)
 3. Add a public wrapper in [`Sync.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Sync.js)
-4. Optionally add it to `syncAllRaw()` or another flow in [`Main.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Main.js)
+4. Add it to `syncReportingInputs_()` only when it is required by the daily report
 
 ## Current Notes
 

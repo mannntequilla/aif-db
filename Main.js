@@ -1,64 +1,38 @@
-function testCasesFetch() {
-  const cases = apiGetAllPages_(CONFIG.endpoints.cases);
-  Logger.log('Total cases: ' + cases.length);
+/**
+ * Main daily entrypoint. It refreshes every source currently used by the
+ * Looker Studio report and rebuilds its dependent reporting tables.
+ */
+function runDailyRefresh() {
+  refreshReporting_();
 }
-function resetAutoRefreshTrigger() {
-  const triggers = ScriptApp.getProjectTriggers();
 
-  // elimina triggers anteriores
-  triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'runFullRefreshCaseMaster') {
+/**
+ * One-time administrative action. Run this after deploying the cleanup to
+ * replace the former runFullRefreshCaseMaster trigger with runDailyRefresh.
+ */
+function resetDailyRefreshTrigger() {
+  const triggerHandlers = {
+    runFullRefreshCaseMaster: true,
+    runDailyRefresh: true
+  };
+
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (triggerHandlers[trigger.getHandlerFunction()]) {
       ScriptApp.deleteTrigger(trigger);
     }
   });
 
-  // crea uno nuevo (1 vez al dia)
-  ScriptApp.newTrigger('runFullRefreshCaseMaster')
+  ScriptApp.newTrigger('runDailyRefresh')
     .timeBased()
     .everyDays(1)
     .create();
 
-  Logger.log('Trigger configurado correctamente.');
-}
-
-function runFullRefreshCaseMaster() {
-  fullRefreshCaseMaster();
-}
-
-
-function syncAllRaw() {
-  syncResourcesByKeys_([
-    'cases',
-    'clients',
-    'leads',
-    'invoices',
-    'expenses',
-    'events',
-    'roles',
-    'calls',
-    'tasks',
-    'staff',
-    'customFields',
-    'referralSources'
-  ]);
-}
-
-
-function syncCaseMasterInputs() {
-  syncResourcesByKeys_([
-    'cases',
-    'clients',
-    'invoices',
-    'expenses',
-    'events',
-    'customFields'
-  ]);
+  Logger.log('Trigger diario configurado para runDailyRefresh.');
 }
 
 /**
- * Refreshes the current case-to-worker assignments independently from the
- * regular case refresh. This keeps the high-volume spreadsheet writes apart
- * and avoids a Sheets timeout after the core reporting tables are rebuilt.
+ * Refreshes the current case-to-worker workload model separately from the
+ * daily reporting refresh, preventing accumulated Sheets write timeouts.
  */
 function refreshCaseStaffingAnalytics() {
   const lock = LockService.getScriptLock();
@@ -82,12 +56,7 @@ function refreshCaseStaffingAnalytics() {
   }
 }
 
-function exploreExpensesRaw() {
-  syncExpenses();
-  profileExpensesRaw_();
-}
-
-function fullRefreshCaseMaster() {
+function refreshReporting_() {
   const lock = LockService.getScriptLock();
 
   if (!lock.tryLock(30000)) {
@@ -98,10 +67,10 @@ function fullRefreshCaseMaster() {
   const start = new Date();
 
   try {
-    Logger.log('=== INICIO fullRefreshCaseMaster ===');
+    Logger.log('=== INICIO runDailyRefresh ===');
 
-    Logger.log('1. Sync case master inputs...');
-    syncCaseMasterInputs();
+    Logger.log('1. Sync report inputs...');
+    syncReportingInputs_();
 
     Logger.log('2. Import latest MyCase leads report...');
     importLatestMyCaseLeadsReportFromDrive();
@@ -127,13 +96,11 @@ function fullRefreshCaseMaster() {
     Logger.log('9. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
-    Logger.log('10. updateLastRefreshTimestamp_');
     updateLastRefreshTimestamp_();
-
-    Logger.log('=== FIN OK fullRefreshCaseMaster ===');
+    Logger.log('=== FIN OK runDailyRefresh ===');
     Logger.log('Duracion total: ' + ((new Date() - start) / 1000) + ' segundos');
   } catch (error) {
-    Logger.log('ERROR en fullRefreshCaseMaster: ' + error.message);
+    Logger.log('ERROR en runDailyRefresh: ' + error.message);
     Logger.log(error.stack);
     throw error;
   } finally {
@@ -141,67 +108,19 @@ function fullRefreshCaseMaster() {
   }
 }
 
-function fullRefreshAll() {
-  const lock = LockService.getScriptLock();
-
-  if (!lock.tryLock(30000)) {
-    Logger.log('Ya hay una ejecucion en curso.');
-    return;
-  }
-
-  const start = new Date();
-
-  try {
-    Logger.log('=== INICIO fullRefreshAll ===');
-
-    Logger.log('1. Sync all raw sheets...');
-    syncAllRaw();
-
-    Logger.log('2. Import latest MyCase leads report...');
-    importLatestMyCaseLeadsReportFromDrive();
-
-    Logger.log('3. Build dim_date...');
-    buildDimDate();
-
-    Logger.log('4. Build fact_case_master...');
-    buildFactCaseMaster();
-
-    Logger.log('5. Build fact_case...');
-    buildFactCase();
-
-    Logger.log('6. Build bridge_client_cases...');
-    buildBridgeClientCases();
-
-    Logger.log('7. Build bridge_lead_case...');
-    buildBridgeLeadCase();
-
-    Logger.log('8. Build EventsPerCaseId...');
-    buildEventsPerCaseId();
-
-    Logger.log('9. Build fact_case_profitability...');
-    buildFactCaseProfitability();
-
-    Logger.log('10. updateLastRefreshTimestamp_');
-    updateLastRefreshTimestamp_();
-
-    Logger.log('=== FIN OK fullRefreshAll ===');
-    Logger.log('Duracion total: ' + ((new Date() - start) / 1000) + ' segundos');
-  } catch (error) {
-    Logger.log('ERROR en fullRefreshAll: ' + error.message);
-    Logger.log(error.stack);
-    throw error;
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function refreshMyCaseLeadsReport(){
-  importLatestMyCaseLeadsReportFromDrive()
+function syncReportingInputs_() {
+  syncResourcesByKeys_([
+    'cases',
+    'clients',
+    'invoices',
+    'expenses',
+    'events',
+    'customFields'
+  ]);
 }
 
 function updateLastRefreshTimestamp_() {
   const sheet = getSpreadsheet_().getSheetByName('Menu');
-
   if (!sheet) return;
 
   sheet.getRange('A1').setValue('Ultima actualizacion: ' + new Date());
