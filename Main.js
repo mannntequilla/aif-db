@@ -72,6 +72,7 @@ function refreshCaseStaffingAnalytics() {
     Logger.log('=== INICIO refreshCaseStaffingAnalytics ===');
     syncResourcesByKeys_(['cases', 'staff']);
     buildBridgeCaseStaff();
+    buildOpenCasesByParalegalReport();
     Logger.log('=== FIN OK refreshCaseStaffingAnalytics ===');
   } catch (error) {
     Logger.log('ERROR en refreshCaseStaffingAnalytics: ' + error.message);

@@ -26,6 +26,7 @@ const CONFIG = {
     rawReferralSources: 'raw_referral_sources',
     bridgeClientCases: 'bridge_client_cases',
     bridgeCaseStaff: 'bridge_case_staff',
+    reportOpenCasesByParalegal: 'report_open_cases_by_paralegal',
     bridgeLeadCase: 'bridge_lead_case',
     eventsPerCaseId: 'EventsPerCaseId',
     factCaseMaster: 'fact_case_master',

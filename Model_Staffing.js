@@ -98,3 +98,61 @@ function buildBridgeCaseStaff() {
 
   writeRowsToSheet_(CONFIG.sheets.bridgeCaseStaff, rows);
 }
+
+/**
+ * Reporting-ready aggregation for the active workload chart. The fact is
+ * joined to the staff bridge here, so dashboards do not have to implement a
+ * many-to-many join or risk double-counting cases.
+ */
+function buildOpenCasesByParalegalReport() {
+  const cases = readSheetAsObjectsIfExists_(CONFIG.sheets.rawCases);
+  const assignments = readSheetAsObjectsIfExists_(CONFIG.sheets.bridgeCaseStaff);
+  const caseByKey = indexBy_(cases, 'id');
+  const grouped = {};
+
+  assignments.forEach(function(assignment) {
+    const staffTitle = String(firstNonEmpty_(assignment.staff_title)).trim();
+    if (!isParalegal_(staffTitle)) return;
+
+    const caseRow = caseByKey[String(firstNonEmpty_(assignment.case_key)).trim()] || {};
+    if (!isOpenCase_(caseRow)) return;
+
+    const staffKey = String(firstNonEmpty_(assignment.staff_key)).trim();
+    if (!staffKey) return;
+    if (!grouped[staffKey]) {
+      grouped[staffKey] = {
+        staff_key: staffKey,
+        paralegal_name: firstNonEmpty_(assignment.staff_name, 'Unknown staff ' + staffKey),
+        staff_title: staffTitle,
+        open_case_keys: {}
+      };
+    }
+
+    grouped[staffKey].open_case_keys[String(firstNonEmpty_(assignment.case_key))] = true;
+  });
+
+  const rows = Object.keys(grouped).map(function(staffKey) {
+    const row = grouped[staffKey];
+    return {
+      staff_key: row.staff_key,
+      paralegal_name: row.paralegal_name,
+      staff_title: row.staff_title,
+      open_case_count: Object.keys(row.open_case_keys).length
+    };
+  }).sort(function(a, b) {
+    return b.open_case_count - a.open_case_count ||
+      String(a.paralegal_name).localeCompare(String(b.paralegal_name));
+  });
+
+  writeRowsToSheet_(CONFIG.sheets.reportOpenCasesByParalegal, rows);
+}
+
+function isParalegal_(staffTitle) {
+  return normalizeText_(staffTitle).indexOf('paralegal') !== -1;
+}
+
+function isOpenCase_(caseRow) {
+  const status = normalizeText_(firstNonEmpty_(caseRow.status, caseRow.case_status));
+  const closedDate = toDateOnlyMaybe_(firstNonEmpty_(caseRow.closed_date, caseRow.case_closed_date));
+  return status !== 'closed' && !closedDate;
+}

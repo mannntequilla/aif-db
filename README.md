@@ -137,6 +137,10 @@ many spreadsheet writes in the primary refresh. The bridge includes both
 `staff_key` and `staff_name`; charts should use `staff_name` as their label
 and retain `staff_key` only for joins.
 
+The same refresh builds `report_open_cases_by_paralegal`, with one row per
+paralegal and a distinct count of currently open cases. Use that sheet directly
+as the source for the workload chart.
+
 ### Expenses Exploration Flow
 
 `exploreExpensesRaw()` does:
