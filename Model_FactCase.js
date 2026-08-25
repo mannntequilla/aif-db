@@ -1,9 +1,10 @@
 /**
  * Canonical case fact: exactly one row per MyCase case.
  *
- * This table deliberately holds analytic keys and measures only. Names, PII,
- * lead details and many-to-many relationships remain in their respective
- * dimensions/bridge tables, preventing case counts from being duplicated.
+ * This table holds one operational row per case. Case number and case name are
+ * included for restricted management exception reporting; many-to-many
+ * relationships remain in their respective bridge tables to prevent duplicate
+ * case counts.
  */
 function buildFactCase() {
   const cases = readSheetAsObjects_(CONFIG.sheets.rawCases);
@@ -46,6 +47,7 @@ function buildFactCase() {
       case_key: caseId,
       case_id: caseId,
       case_number: firstNonEmpty_(caseRow.case_number),
+      case_name: firstNonEmpty_(caseRow.name, caseRow.case_name),
 
       case_type_key: normalizeDimensionKey_(getCaseCustomFieldValueById_(caseRow, caseTypeCustomFieldId)),
       practice_area_key: normalizeDimensionKey_(firstNonEmpty_(caseRow.practice_area, caseRow.practice_area_name)),
