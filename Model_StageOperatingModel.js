@@ -11,13 +11,10 @@ function buildStageOperatingModel() {
     stageOperatingRow_('Case Assembly & Filing', 'Active Work'),
     stageOperatingRow_('Court Preparation', 'Active Work'),
 
-    stageOperatingRow_('Compliance Review', 'Active Follow Up',
-      'Verification that forms and submitted documents are complete, correct and appropriate'),
-
     stageOperatingRow_('Welcome Letter Sent', 'Client Waiting'),
-    stageOperatingRow_('Document Gathering', 'Active Work',
+    stageOperatingRow_('Document Gathering', 'Active Follow Up',
       'Active collection and coordination of client documents'),
-    stageOperatingRow_('Client Review & Signature', 'Active Work',
+    stageOperatingRow_('Client Review & Signature', 'Active Follow Up',
       'Active work; client corrections and interactions are generally minimal'),
 
     stageOperatingRow_('Waiting for Official Response', 'External Waiting',
