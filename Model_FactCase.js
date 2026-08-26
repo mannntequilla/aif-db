@@ -63,6 +63,7 @@ function buildFactCase() {
       primary_client_key: String(firstNonEmpty_(linkedClient.id, linkedClient.client_id)).trim(),
       primary_attorney_key: staffing.primary_attorney_id,
       lead_attorney_key: staffing.lead_attorney_id,
+      lead_attorney_name: staffing.lead_attorney_name,
       originating_attorney_key: staffing.originating_attorney_id,
       referral_source_key: normalizeDimensionKey_(referralSource),
       referral_match_status: firstNonEmpty_(leadMatch.match_status, 'unmatched'),
@@ -135,8 +136,14 @@ function resolveCaseStaffing_(caseRow, staffById) {
     return member.originating_lawyer === true;
   });
   const primaryAttorney = leadAttorney || originatingAttorney || attorneyAssignments[0] || {};
+  const leadAttorneyId = String(firstNonEmpty_(leadAttorney && leadAttorney.id)).trim();
+  const leadAttorneyStaff = staffById[leadAttorneyId] || {};
 
   return {
+    lead_attorney_name: firstNonEmpty_(
+      leadAttorneyStaff.full_name,
+      buildFullName_(leadAttorneyStaff)
+    ),
     primary_attorney_id: String(firstNonEmpty_(primaryAttorney.id)).trim(),
     lead_attorney_id: String(firstNonEmpty_(leadAttorney && leadAttorney.id)).trim(),
     originating_attorney_id: String(firstNonEmpty_(originatingAttorney && originatingAttorney.id)).trim(),
