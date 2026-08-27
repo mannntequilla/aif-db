@@ -54,6 +54,7 @@ function stageOperatingRow_(stageName, operatingCategory, note, options) {
     current_case_stage_key: normalizeDimensionKey_(stageName),
     current_case_stage: stageName,
     operating_category: operatingCategory,
+    operating_category_display: getOperatingCategoryDisplay_(operatingCategory),
     is_active_work: isActiveWork ? 1 : 0,
     is_active_follow_up: isActiveFollowUp ? 1 : 0,
     is_waiting: isWaiting ? 1 : 0,
@@ -65,4 +66,19 @@ function stageOperatingRow_(stageName, operatingCategory, note, options) {
     requires_periodic_follow_up: options.requiresPeriodicFollowUp ? 1 : 0,
     operating_note: note || ''
   };
+}
+
+/**
+ * Presentation labels for the dashboard. Keep operating_category unchanged:
+ * flags and existing logic rely on its canonical internal values.
+ */
+function getOperatingCategoryDisplay_(operatingCategory) {
+  const labels = {
+    'Active Work': 'Filing Pending',
+    'Active Follow Up': 'Filing Pending',
+    'External Waiting': 'Filed',
+    'Client Waiting': 'Pending Signature'
+  };
+
+  return labels[operatingCategory] || operatingCategory;
 }
