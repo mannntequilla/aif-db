@@ -28,7 +28,7 @@ function buildStageOperatingModel() {
       { classification: 'External Waiting', requiresPeriodicFollowUp: true }),
 
     stageOperatingRow_('Final Resolution', 'File Closed', '', { classification: 'Closure / Exit' }),
-    stageOperatingRow_('Disengagement', 'File Closed',
+    stageOperatingRow_('Disengagement', 'Disengagement',
       'Close after the 30-day disengagement period',
       { classification: 'Closure / Exit', requiresCaseClosure: false, closureGraceDays: 30 }),
 
