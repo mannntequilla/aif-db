@@ -24,10 +24,13 @@ function resetDailyRefreshTrigger() {
 
   ScriptApp.newTrigger('runDailyRefresh')
     .timeBased()
+    .atHour(15)
+    .nearMinute(0)
     .everyDays(1)
+    .inTimezone('America/New_York')
     .create();
 
-  Logger.log('Trigger diario configurado para runDailyRefresh.');
+  Logger.log('Trigger diario configurado para runDailyRefresh: 3:00 p. m. America/New_York.');
 }
 
 /**

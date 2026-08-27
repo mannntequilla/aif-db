@@ -5,32 +5,32 @@
  */
 function buildStageOperatingModel() {
   const rows = [
-    stageOperatingRow_('Recently Added', 'Active Work'),
-    stageOperatingRow_('Case Classification', 'Active Work'),
-    stageOperatingRow_('Drafting Packet', 'Active Work'),
-    stageOperatingRow_('Case Assembly & Filing', 'Active Work'),
-    stageOperatingRow_('Court Preparation', 'Active Work'),
+    stageOperatingRow_('Recently Added', 'Filing Pending', '', { classification: 'Active Work' }),
+    stageOperatingRow_('Case Classification', 'Filing Pending', '', { classification: 'Active Work' }),
+    stageOperatingRow_('Drafting Packet', 'Filing Pending', '', { classification: 'Active Work' }),
+    stageOperatingRow_('Case Assembly & Filing', 'Filing Pending', '', { classification: 'Active Work' }),
+    stageOperatingRow_('Court Preparation', 'Filing Pending', '', { classification: 'Active Work' }),
 
-    stageOperatingRow_('Welcome Letter Sent', 'Client Waiting'),
-    stageOperatingRow_('Document Gathering', 'Active Follow Up',
-      'Active collection and coordination of client documents'),
-    stageOperatingRow_('Client Review & Signature', 'Active Follow Up',
-      'Active work; client corrections and interactions are generally minimal'),
+    stageOperatingRow_('Welcome Letter Sent', 'Pending Signature', '', { classification: 'Client Waiting' }),
+    stageOperatingRow_('Document Gathering', 'Filing Pending',
+      'Active collection and coordination of client documents', { classification: 'Active Follow Up' }),
+    stageOperatingRow_('Client Review & Signature', 'Filing Pending',
+      'Active work; client corrections and interactions are generally minimal', { classification: 'Active Follow Up' }),
 
-    stageOperatingRow_('Waiting for Official Response', 'External Waiting',
+    stageOperatingRow_('Waiting for Official Response', 'Filed',
       'May require client contact or an inquiry during processing time',
-      { requiresPeriodicFollowUp: true }),
-    stageOperatingRow_('Waiting for Final Hearing', 'External Waiting',
+      { classification: 'External Waiting', requiresPeriodicFollowUp: true }),
+    stageOperatingRow_('Waiting for Final Hearing', 'Filed',
       'May require client contact or an inquiry while awaiting hearing',
-      { requiresPeriodicFollowUp: true }),
-    stageOperatingRow_('Waiting Priority Date', 'External Waiting',
+      { classification: 'External Waiting', requiresPeriodicFollowUp: true }),
+    stageOperatingRow_('Waiting Priority Date', 'Filed',
       'May require periodic follow-up while awaiting priority date',
-      { requiresPeriodicFollowUp: true }),
+      { classification: 'External Waiting', requiresPeriodicFollowUp: true }),
 
-    stageOperatingRow_('Final Resolution', 'Closure / Exit'),
-    stageOperatingRow_('Disengagement', 'Closure / Exit',
+    stageOperatingRow_('Final Resolution', 'File Closed', '', { classification: 'Closure / Exit' }),
+    stageOperatingRow_('Disengagement', 'File Closed',
       'Close after the 30-day disengagement period',
-      { requiresCaseClosure: false, closureGraceDays: 30 }),
+      { classification: 'Closure / Exit', requiresCaseClosure: false, closureGraceDays: 30 }),
 
     stageOperatingRow_('Active', 'Unclassified / Data Quality', 'Stage update required')
   ];
@@ -42,19 +42,19 @@ function buildStageOperatingModel() {
 
 function stageOperatingRow_(stageName, operatingCategory, note, options) {
   options = options || {};
-  const isActiveWork = operatingCategory === 'Active Work';
-  const isActiveFollowUp = operatingCategory === 'Active Follow Up';
-  const isWaiting = operatingCategory === 'Client Waiting' ||
-    operatingCategory === 'External Waiting' ||
-    operatingCategory === 'Attorney Review';
-  const isClosure = operatingCategory === 'Closure / Exit';
-  const isDataQuality = operatingCategory === 'Unclassified / Data Quality';
+  const classification = options.classification || operatingCategory;
+  const isActiveWork = classification === 'Active Work';
+  const isActiveFollowUp = classification === 'Active Follow Up';
+  const isWaiting = classification === 'Client Waiting' ||
+    classification === 'External Waiting' ||
+    classification === 'Attorney Review';
+  const isClosure = classification === 'Closure / Exit';
+  const isDataQuality = classification === 'Unclassified / Data Quality';
 
   return {
     current_case_stage_key: normalizeDimensionKey_(stageName),
     current_case_stage: stageName,
     operating_category: operatingCategory,
-    operating_category_display: getOperatingCategoryDisplay_(operatingCategory),
     is_active_work: isActiveWork ? 1 : 0,
     is_active_follow_up: isActiveFollowUp ? 1 : 0,
     is_waiting: isWaiting ? 1 : 0,
@@ -66,19 +66,4 @@ function stageOperatingRow_(stageName, operatingCategory, note, options) {
     requires_periodic_follow_up: options.requiresPeriodicFollowUp ? 1 : 0,
     operating_note: note || ''
   };
-}
-
-/**
- * Presentation labels for the dashboard. Keep operating_category unchanged:
- * flags and existing logic rely on its canonical internal values.
- */
-function getOperatingCategoryDisplay_(operatingCategory) {
-  const labels = {
-    'Active Work': 'Filing Pending',
-    'Active Follow Up': 'Filing Pending',
-    'External Waiting': 'Filed',
-    'Client Waiting': 'Pending Signature'
-  };
-
-  return labels[operatingCategory] || operatingCategory;
 }
