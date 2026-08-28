@@ -78,6 +78,9 @@ Main goals:
 
   It is complemented by `case_workload_by_staff`, which has one row per case and assigned worker and is the reusable source for workload charts.
 
+- [`Model_FactTask.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_FactTask.js)
+  Builds `fact_task` at task-assignee grain for task workload, completion time, and due-date reporting. Use distinct task counts for firm-wide totals because multi-assignee tasks have one row per assignee.
+
 - [`Model_Staffing.js`](/C:/Users/valer/Aguado_Automations/02_mycase_integrations/mycase_appscript/Model_Staffing.js)
   Builds the reusable `case_workload_by_staff` reporting table.
 
@@ -155,6 +158,7 @@ Current modeled/report sheets include:
 
 - `fact_case_master`
 - `fact_case`
+- `fact_task`
 - `case_workload_by_staff`
 
 ## Custom Fields

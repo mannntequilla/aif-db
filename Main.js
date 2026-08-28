@@ -110,16 +110,19 @@ function refreshReporting_() {
     Logger.log('4. Build fact_case...');
     buildFactCase();
 
-    Logger.log('5. Build bridge_client_cases...');
+    Logger.log('5. Build fact_task...');
+    buildFactTask();
+
+    Logger.log('6. Build bridge_client_cases...');
     buildBridgeClientCases();
 
-    Logger.log('6. Build bridge_lead_case...');
+    Logger.log('7. Build bridge_lead_case...');
     buildBridgeLeadCase();
 
-    Logger.log('7. Build EventsPerCaseId...');
+    Logger.log('8. Build EventsPerCaseId...');
     buildEventsPerCaseId();
 
-    Logger.log('8. Build fact_case_profitability...');
+    Logger.log('9. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
     updateLastRefreshTimestamp_();
@@ -141,6 +144,8 @@ function syncReportingInputs_() {
     'invoices',
     'expenses',
     'events',
+    'tasks',
+    'staff',
     'customFields'
   ]);
 }

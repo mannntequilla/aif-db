@@ -31,6 +31,7 @@ const CONFIG = {
     eventsPerCaseId: 'EventsPerCaseId',
     factCaseMaster: 'fact_case_master',
     factCase: 'fact_case',
+    factTask: 'fact_task',
     factCaseProfitability: 'fact_case_profitability',
     taskReport: 'task_report',
     rawMyCaseLeadsReport: 'raw_mycase_leads_report',
