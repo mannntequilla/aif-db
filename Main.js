@@ -13,7 +13,8 @@ function runDailyRefresh() {
 function resetDailyRefreshTrigger() {
   const triggerHandlers = {
     runFullRefreshCaseMaster: true,
-    runDailyRefresh: true
+    runDailyRefresh: true,
+    refreshTaskAnalytics: true
   };
 
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
@@ -30,7 +31,15 @@ function resetDailyRefreshTrigger() {
     .inTimezone('America/New_York')
     .create();
 
-  Logger.log('Trigger diario configurado para runDailyRefresh: 3:00 p. m. America/New_York.');
+  ScriptApp.newTrigger('refreshTaskAnalytics')
+    .timeBased()
+    .atHour(16)
+    .nearMinute(0)
+    .everyDays(1)
+    .inTimezone('America/New_York')
+    .create();
+
+  Logger.log('Triggers diarios configurados: runDailyRefresh 3:00 p. m. y refreshTaskAnalytics 4:00 p. m. America/New_York.');
 }
 
 /**
@@ -52,6 +61,33 @@ function refreshCaseStaffingAnalytics() {
     Logger.log('=== FIN OK refreshCaseStaffingAnalytics ===');
   } catch (error) {
     Logger.log('ERROR en refreshCaseStaffingAnalytics: ' + error.message);
+    Logger.log(error.stack);
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Refreshes task reporting separately from the broader daily refresh. Keeping
+ * its Sheets write isolated prevents the fact_task rebuild from contributing
+ * to spreadsheet service timeouts in the full reporting run.
+ */
+function refreshTaskAnalytics() {
+  const lock = LockService.getScriptLock();
+
+  if (!lock.tryLock(30000)) {
+    Logger.log('Ya hay una ejecucion en curso. Intenta nuevamente en unos minutos.');
+    return;
+  }
+
+  try {
+    Logger.log('=== INICIO refreshTaskAnalytics ===');
+    syncResourcesByKeys_(['tasks', 'staff']);
+    buildFactTask();
+    Logger.log('=== FIN OK refreshTaskAnalytics ===');
+  } catch (error) {
+    Logger.log('ERROR en refreshTaskAnalytics: ' + error.message);
     Logger.log(error.stack);
     throw error;
   } finally {
@@ -110,19 +146,16 @@ function refreshReporting_() {
     Logger.log('4. Build fact_case...');
     buildFactCase();
 
-    Logger.log('5. Build fact_task...');
-    buildFactTask();
-
-    Logger.log('6. Build bridge_client_cases...');
+    Logger.log('5. Build bridge_client_cases...');
     buildBridgeClientCases();
 
-    Logger.log('7. Build bridge_lead_case...');
+    Logger.log('6. Build bridge_lead_case...');
     buildBridgeLeadCase();
 
-    Logger.log('8. Build EventsPerCaseId...');
+    Logger.log('7. Build EventsPerCaseId...');
     buildEventsPerCaseId();
 
-    Logger.log('9. Build fact_case_profitability...');
+    Logger.log('8. Build fact_case_profitability...');
     buildFactCaseProfitability();
 
     updateLastRefreshTimestamp_();
@@ -144,8 +177,6 @@ function syncReportingInputs_() {
     'invoices',
     'expenses',
     'events',
-    'tasks',
-    'staff',
     'customFields'
   ]);
 }
