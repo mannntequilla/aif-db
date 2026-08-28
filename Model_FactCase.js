@@ -18,7 +18,7 @@ function buildFactCase() {
   const clientsById = indexBy_(clients, 'id');
   const staffById = indexBy_(staff, 'id');
   const invoicesByCaseId = aggregateInvoicesByCaseId_(invoices);
-  const activityByCaseId = aggregateCaseActivityByCaseId_(events);
+  const eventCountByCaseId = aggregateEventCountByCaseId_(events);
   const leadMatches = buildLeadMatches_(cases, leadsReport, clientsById);
   const caseTypeCustomFieldId = getCustomFieldIdByName_(customFields, 'Case Type', 'case');
 
@@ -27,7 +27,7 @@ function buildFactCase() {
     const caseId = String(firstNonEmpty_(caseRow.id, caseRow.case_id)).trim();
     const openedDate = toDateOnlyMaybe_(firstNonEmpty_(caseRow.opened_date, caseRow.case_opened_date));
     const closedDate = toDateOnlyMaybe_(firstNonEmpty_(caseRow.closed_date, caseRow.case_closed_date));
-    const activity = activityByCaseId[caseId] || emptyCaseActivity_();
+    const eventCount = eventCountByCaseId[caseId] || 0;
     const staffing = resolveCaseStaffing_(caseRow, staffById);
     const leadMatch = leadMatches[caseId] || {};
     const financials = invoicesByCaseId[caseId] || {
@@ -84,7 +84,7 @@ function buildFactCase() {
       has_recent_activity_14d: daysSinceLastActivity !== '' && daysSinceLastActivity <= 14 ? 1 : 0,
       is_stale_14d: !isClosed && daysSinceLastActivity !== '' && daysSinceLastActivity > 14 ? 1 : 0,
       has_no_activity: lastActivityDate ? 0 : 1,
-      event_count: activity.activity_count,
+      event_count: eventCount,
       assigned_staff_count: staffing.assigned_staff_count,
       assigned_attorney_count: staffing.assigned_attorney_count,
       has_staff_assigned: staffing.assigned_staff_count > 0 ? 1 : 0,
@@ -99,32 +99,17 @@ function buildFactCase() {
   formatFactCaseColumns_();
 }
 
-function aggregateCaseActivityByCaseId_(events) {
+function aggregateEventCountByCaseId_(events) {
   const out = {};
 
   events.forEach(function(eventRow) {
     const caseId = String(firstNonEmpty_(extractCaseIdFromEvent_(eventRow))).trim();
     if (!caseId) return;
 
-    if (!out[caseId]) out[caseId] = emptyCaseActivity_();
-
-    const activityDate = toDateOnlyMaybe_(firstNonEmpty_(
-      eventRow.start,
-      eventRow.updated_at,
-      eventRow.created_at
-    ));
-    out[caseId].activity_count += 1;
-
-    if (activityDate && (!out[caseId].last_activity_date || activityDate > out[caseId].last_activity_date)) {
-      out[caseId].last_activity_date = activityDate;
-    }
+    out[caseId] = (out[caseId] || 0) + 1;
   });
 
   return out;
-}
-
-function emptyCaseActivity_() {
-  return { activity_count: 0, last_activity_date: '' };
 }
 
 function resolveCaseStaffing_(caseRow, staffById) {
