@@ -39,7 +39,14 @@ function buildFactCase() {
     const isClosed = normalizeText_(status) === 'closed' || Boolean(closedDate);
     const referenceDate = isClosed ? closedDate : today;
     const daysSinceOpen = daysBetweenDates_(openedDate, referenceDate);
-    const daysSinceLastActivity = daysBetweenDates_(activity.last_activity_date, today);
+    // Use the case record's own update timestamp as the operational recency
+    // signal. A calendar event's scheduled start can be in the future and does
+    // not reliably represent work performed on the case.
+    const lastActivityDate = toDateOnlyMaybe_(firstNonEmpty_(
+      caseRow.updated_at,
+      caseRow.case_updated_at
+    ));
+    const daysSinceLastActivity = daysBetweenDates_(lastActivityDate, today);
     const linkedClient = resolveClientFromRef_(findPreferredCaseClientRef_(caseRow), clientsById) || {};
     const referralSource = firstNonEmpty_(leadMatch.referral_source);
 
@@ -58,7 +65,7 @@ function buildFactCase() {
       opened_date: openedDate,
       closed_date: closedDate,
       created_date: toDateOnlyMaybe_(firstNonEmpty_(caseRow.created_at, caseRow.case_created_at)),
-      last_activity_date: activity.last_activity_date,
+      last_activity_date: lastActivityDate,
 
       primary_client_key: String(firstNonEmpty_(linkedClient.id, linkedClient.client_id)).trim(),
       primary_attorney_key: staffing.primary_attorney_id,
@@ -76,7 +83,7 @@ function buildFactCase() {
       days_since_last_activity: daysSinceLastActivity,
       has_recent_activity_14d: daysSinceLastActivity !== '' && daysSinceLastActivity <= 14 ? 1 : 0,
       is_stale_14d: !isClosed && daysSinceLastActivity !== '' && daysSinceLastActivity > 14 ? 1 : 0,
-      has_no_activity: activity.activity_count === 0 ? 1 : 0,
+      has_no_activity: lastActivityDate ? 0 : 1,
       event_count: activity.activity_count,
       assigned_staff_count: staffing.assigned_staff_count,
       assigned_attorney_count: staffing.assigned_attorney_count,
